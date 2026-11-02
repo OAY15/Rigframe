@@ -1,0 +1,4568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rigframe · 原型 v0.2</title>
+<style>
+  :root{
+    --bg:#151515; --panel:#1c1c1c; --panel2:#242424; --panel3:#2c2c2c;
+    --line:#303030; --line2:#3d3d3d;
+    --text:#e9e9e6; --muted:#8d8d88; --dim:#6a6a65;
+    --accent:#5DCAA5; --accent2:#85B7EB; --warn:#F0997B; --danger:#E24B4A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text); overflow:hidden;
+    font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:12px; -webkit-font-smoothing:antialiased; user-select:none;
+  }
+  #app{display:grid; grid-template-rows:46px 1fr var(--foot, 206px); height:100%}
+  #app.propen{--foot:calc(236px + var(--prh, 136px))}
+  @media (max-height:860px){
+    #app.propen{--foot:calc(226px + var(--prh, 110px))}
+  }
+
+  header{display:flex; align-items:center; gap:8px; padding:0 12px; background:var(--panel); border-bottom:1px solid var(--line)}
+  .brand{font-size:12px; font-weight:500; letter-spacing:.02em; white-space:nowrap}
+  .brand em{font-style:normal; color:var(--dim); margin-left:7px; font-size:10px; font-weight:400}
+  .vline{width:1px; height:20px; background:var(--line); margin:0 4px}
+  .spacer{flex:1}
+
+  button{
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    border-radius:5px; padding:5px 10px; font-size:11px; cursor:pointer;
+    font-family:inherit; white-space:nowrap; transition:background .1s,border-color .1s,color .1s;
+  }
+  button:hover{background:#333; border-color:var(--line2)}
+  button:active{background:#3a3a3a}
+  button.primary{background:#1d4d3e; border-color:#2f6f59; color:#d6f5e9}
+  button.primary:hover{background:#236050}
+  button.on{background:#3a2f1c; border-color:#7a5f33; color:#f5d9a8}
+  button.ghost{background:transparent; border-color:transparent; color:var(--muted)}
+  button.ghost:hover{background:var(--panel2); color:var(--text)}
+  button:disabled{opacity:.35; cursor:default}
+  button.mini{padding:2px 6px; font-size:10px; border-radius:4px}
+
+  input[type=number],input[type=text]{
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    border-radius:5px; padding:4px 6px; font-size:11px; font-family:inherit; width:100%;
+  }
+  input:focus{outline:none; border-color:#4a6f60}
+  select{
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    border-radius:5px; padding:4px 6px; font-size:11px; font-family:inherit; width:100%;
+  }
+  input[type=range]{accent-color:var(--accent); height:3px; width:100%}
+  input[type=color]{background:transparent; border:1px solid var(--line); border-radius:5px; width:30px; height:24px; padding:1px; cursor:pointer}
+
+  main{display:grid; grid-template-columns:252px minmax(0,1fr) 286px; grid-template-rows:1fr; min-height:0}
+
+  aside{background:var(--panel); display:flex; flex-direction:column; min-height:0}
+  #layers{border-right:1px solid var(--line)}
+  #inspector{border-left:1px solid var(--line)}
+
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 10px 7px; font-size:10px; letter-spacing:.09em; color:var(--dim);
+    text-transform:uppercase; border-bottom:1px solid var(--line); flex:none;
+  }
+  .panel-body{overflow-y:auto; flex:1; min-height:0; scrollbar-width:thin; scrollbar-color:#3f3f3f transparent}
+  .panel-body::-webkit-scrollbar{width:9px}
+  .panel-body::-webkit-scrollbar-track{background:transparent}
+  .panel-body::-webkit-scrollbar-thumb{background:#3f3f3f; border-radius:5px; border:2px solid var(--panel)}
+  .panel-body::-webkit-scrollbar-thumb:hover{background:#555}
+  .panel-foot{padding:7px; border-top:1px solid var(--line); display:flex; gap:5px; flex:none}
+
+  .layer{
+    display:flex; align-items:center; gap:6px; padding:4px 9px; cursor:pointer;
+    border-left:2px solid transparent; position:relative;
+  }
+  .layer:hover{background:#232323}
+  .layer.sel{background:#2a2a2a; border-left-color:var(--accent)}
+  .layer.drop-top{box-shadow:inset 0 2px 0 var(--accent2)}
+  .layer.dragging{opacity:.4}
+  .layer .chev{width:11px; flex:none; color:var(--dim); font-size:9px; text-align:center; line-height:1}
+  .layer .chev:hover{color:var(--text)}
+  .layer .chev-space{width:11px; flex:none}
+  .layer.child::before{
+    content:""; position:absolute; left:15px; top:0; bottom:0; width:1px; background:#2e2e2e;
+  }
+  .layer .thumb{
+    width:26px; height:26px; border-radius:4px; background:#111; flex:none;
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+    border:1px solid #2e2e2e; position:relative;
+  }
+  .layer .thumb img{max-width:100%; max-height:100%; display:block}
+  .layer.folder .thumb{border-color:#5a5a52}
+  .layer.folder .thumb::before{
+    content:""; position:absolute; left:2px; top:-1px; width:11px; height:3px;
+    background:#5a5a52; border-radius:2px 2px 0 0;
+  }
+  .layer.folder .lname{font-weight:500}
+  .layer .lname{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11.5px}
+  .layer .lname input{font-size:11.5px; padding:1px 3px}
+  .layer .tog{
+    width:18px; height:18px; border-radius:3px; display:flex; align-items:center; justify-content:center;
+    color:var(--dim); font-size:10px; flex:none;
+  }
+  .layer .tog:hover{background:#383838; color:var(--text)}
+  .layer .tog.off{color:#4a4a46}
+  .layer .badge{font-size:9px; color:var(--dim); background:#2b2b2b; padding:0 4px; border-radius:3px; flex:none}
+  .layer .pin{font-size:9px; color:#6f6f68; flex:none}
+  .lempty{padding:26px 12px; text-align:center; font-size:11px; color:#57574f; line-height:1.9}
+
+  #layerTabs{
+    display:flex; align-items:center; gap:2px; padding:0 8px; height:28px;
+    border-bottom:1px solid var(--line); flex:none; background:var(--panel);
+  }
+  #layerTabs .ltab{
+    padding:3px 9px 4px; font-size:11px; color:var(--dim); cursor:pointer;
+    border-radius:4px 4px 0 0; border-bottom:2px solid transparent; line-height:1.4;
+  }
+  #layerTabs .ltab:hover{color:var(--text); background:#232323}
+  #layerTabs .ltab.on{color:var(--text); border-bottom-color:var(--accent); background:#252525}
+  #layerTabs .cnt{margin-left:auto; font-size:10px; color:var(--dim); letter-spacing:0}
+
+  #prbar{
+    display:flex; align-items:center; gap:6px; padding:0 10px; height:30px;
+    border-bottom:1px solid var(--line); flex:none; overflow-x:auto; overflow-y:hidden; min-width:0;
+  }
+  #prbar::-webkit-scrollbar{height:0}
+  #prbar .lbl{font-size:10.5px; color:var(--dim); flex:none; white-space:nowrap}
+  #prbar select{flex:none}
+  #prwrap{flex:none; height:0; overflow:hidden; border-bottom:1px solid var(--line); background:#141414}
+  #prwrap.open{height:var(--prh, 136px)}
+  @media (max-height:860px){ #prwrap.open{height:var(--prh, 110px)} }
+  #pr{display:block; width:100%; height:100%; cursor:default}
+
+  #stage{position:relative; background:#0d0d0d; overflow:hidden; min-width:0; min-height:0}
+  #view{display:block; width:100%; height:100%}
+  #hint{position:absolute; left:12px; bottom:10px; font-size:10.5px; color:#565651; line-height:1.65; pointer-events:none}
+  #drop{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:8px; color:#5a5a55; font-size:11.5px; text-align:center; line-height:1.8;
+    pointer-events:none;
+  }
+  #drop b{color:#9a9a95; font-weight:500; font-size:13px}
+  #drop.over{background:#182722}
+  #drop button{pointer-events:auto; margin-top:4px}
+  #toast{
+    position:absolute; left:50%; top:16px; transform:translateX(-50%);
+    background:#243a33; color:#c9f0e2; border:1px solid #37695a; padding:6px 14px;
+    border-radius:6px; font-size:11.5px; opacity:0; transition:opacity .2s; pointer-events:none;
+  }
+  #toast.show{opacity:1}
+  #dropZone{
+    position:fixed; inset:0; z-index:300; display:none;
+    align-items:center; justify-content:center; flex-direction:column; gap:6px;
+    background:rgba(8,16,13,.86); border:2px dashed #3f7a66; color:#cfe9de;
+    font-size:14px; pointer-events:none;
+  }
+  #dropZone.on{display:flex}
+  #dropZone small{color:#7fa093;font-size:11.5px}
+  #ctxMenu{
+    position:fixed; z-index:400; display:none; background:#262626;
+    border:1px solid #3f3f3f; border-radius:7px; padding:4px; min-width:132px;
+    box-shadow:0 8px 26px rgba(0,0,0,.55);
+  }
+  #ctxMenu .mi{padding:5px 10px; font-size:11.5px; border-radius:4px; cursor:pointer; color:#ddd; display:flex; justify-content:space-between; gap:14px}
+  #ctxMenu .mi:hover{background:#343434}
+  #ctxMenu .mi.dim{color:#5f5f5a; pointer-events:none}
+  #ctxMenu .mi em{font-style:normal; color:#6f6f69; font-size:10px}
+  #ctxMenu hr{border:0; border-top:1px solid #383838; margin:4px 2px}
+  #modal{
+    position:fixed; inset:0; z-index:500; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+  }
+  #modal.show{display:flex}
+  #modal .mbox{
+    width:300px; background:#242424; border:1px solid #3f3f3f; border-radius:9px;
+    padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.6);
+  }
+  #modal h3{font-size:13px; font-weight:500; margin-bottom:12px; color:#e9e9e6}
+  #modal input{width:100%; margin-bottom:14px}
+  #modal .mfoot{display:flex; justify-content:flex-end; gap:8px}
+  .card{position:relative}
+  .card .del{
+    position:absolute; top:1px; right:4px; font-size:11px; color:#6a6a65;
+    line-height:1; padding:2px; border-radius:3px;
+  }
+  .card .del:hover{color:#E24B4A; background:#3a2323}
+  #expModal{
+    position:fixed; inset:0; z-index:520; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55);
+  }
+  #expModal.show{display:flex}
+  #expModal .mbox{width:340px; background:#242424; border:1px solid #3f3f3f; border-radius:9px; padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.6)}
+  #expModal h3{font-size:13px; font-weight:500; margin-bottom:12px}
+  .erow{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+  .erow label{width:44px; color:var(--muted); font-size:11px; flex:none}
+  .erow select{flex:1}
+  .erow .ev{color:#b9b9b4; font-size:11px; flex:1}
+  .ebar{height:4px; background:#333; border-radius:2px; overflow:hidden; margin:12px 0 7px}
+  .ebar i{display:block; height:100%; width:0; background:var(--accent); transition:width .12s}
+  .estat{font-size:10.5px; color:var(--dim); margin-bottom:12px; min-height:14px}
+
+  .tabs{display:flex; border-bottom:1px solid var(--line); flex:none}
+  .tab{flex:1; text-align:center; padding:8px 0; font-size:11px; color:var(--dim); cursor:pointer; border-bottom:2px solid transparent}
+  .tab:hover{color:var(--text)}
+  .tab.on{color:var(--text); border-bottom-color:var(--accent)}
+
+  .sec{padding:9px 10px 4px; font-size:10px; letter-spacing:.08em; color:var(--dim); text-transform:uppercase}
+  .row{display:flex; align-items:center; gap:7px; padding:3px 10px}
+  .row>label{width:46px; color:var(--muted); font-size:10.5px; flex:none}
+  .row .val{width:38px; text-align:right; color:#b9b9b4; font-variant-numeric:tabular-nums; font-size:10.5px; flex:none}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:5px; padding:3px 10px}
+  .chk{display:flex; align-items:center; gap:5px; font-size:10.5px; color:var(--muted); padding:3px 10px; cursor:pointer}
+
+  .variants{display:flex; gap:5px; flex-wrap:wrap; padding:3px 10px 6px}
+  .vitem{
+    width:42px; height:42px; border-radius:5px; background:#111; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; position:relative;
+  }
+  .vitem img{max-width:100%; max-height:100%}
+  .vitem.on{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
+  .vitem.add{color:var(--dim); font-size:16px; border-style:dashed}
+  .vitem .vname{position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.6); font-size:8px; text-align:center; color:#bbb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .vitem .vdel{
+    position:absolute; top:1px; right:1px; width:15px; height:15px; border-radius:50%;
+    background:rgba(30,30,30,.9); border:1px solid #4a4a46; color:#c9c9c3; font-size:11px; line-height:13px;
+    text-align:center; cursor:pointer; opacity:0; transition:opacity .12s; z-index:2;
+  }
+  .vitem:hover .vdel{opacity:1}
+  .vitem .vdel:hover{background:#5a2323; border-color:#8c3a3a; color:#ffd7d7}
+
+  .ease-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; padding:3px 10px}
+  .ease-grid button{padding:5px 2px; font-size:10px}
+
+  #curveBox{padding:4px 10px 8px}
+  #curve{width:100%; height:118px; background:#111; border:1px solid var(--line); border-radius:6px; display:block; cursor:crosshair}
+
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:5px; padding:5px 10px 10px}
+  .card{
+    background:var(--panel2); border:1px solid var(--line); border-radius:6px;
+    padding:8px 6px; text-align:center; cursor:pointer; font-size:11px; color:#cfcfca;
+    transition:background .1s,border-color .1s;
+  }
+  .card:hover{background:#313131; border-color:#4a6a5e; color:#fff}
+  .card .ico{display:block; font-size:14px; margin-bottom:3px; opacity:.85}
+
+  footer{background:var(--panel); border-top:1px solid var(--line); display:flex; flex-direction:column; min-height:0; min-width:0}
+  #tlbar{
+    display:flex; align-items:center; gap:7px; padding:0 10px; height:36px;
+    border-bottom:1px solid var(--line); flex:none; overflow-x:auto; overflow-y:hidden; min-width:0;
+  }
+  #tlbar::-webkit-scrollbar{height:0}
+  #tlbar .t{font-variant-numeric:tabular-nums; color:#cfcfca; font-size:11px; min-width:96px}
+  #tlbar .t em{font-style:normal; color:var(--dim)}
+  #tlwrap{flex:1; position:relative; min-height:0; min-width:0}
+  #tl{display:block; width:100%; height:100%; cursor:default}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">Rigframe<em>原型 v0.2</em></div>
+    <div class="vline"></div>
+    <button id="btnUndo" title="撤销 (Ctrl+Z)">↶ 撤销</button>
+    <button id="btnRedo" title="重做 (Ctrl+Shift+Z)">↷ 重做</button>
+    <div class="spacer"></div>
+    <button id="btnHelp" title="打开使用说明" style="padding:5px 9px">?</button>
+    <button id="btnImport">导入分层图</button>
+    <button id="btnAudio">导入音乐</button>
+    <button id="btnExport" class="primary">导出视频</button>
+    <button id="btnLoad">导入工程</button>
+    <button id="btnSave">导出工程</button>
+  </header>
+
+  <main>
+    <aside id="layers">
+      <div id="layerTabs">
+        <div class="ltab on" data-ltab="flat">图层</div>
+        <div class="ltab" data-ltab="tree">父子级</div>
+        <span class="cnt" id="layerCount"></span>
+      </div>
+      <div class="panel-body" id="layerList"></div>
+      <div class="panel-foot">
+        <button id="btnAddTex" style="flex:1">＋ 贴图</button>
+        <button id="btnDelPart" style="flex:1">删除</button>
+      </div>
+    </aside>
+
+    <section id="stage">
+      <canvas id="view"></canvas>
+      <div id="drop">
+        <b>把分层 PNG 拖进来</b>
+        <div>每个部件一张图，同一部位的不同贴图用 __ 区分<br>建议所有图层按整画布尺寸导出，软件会自动对齐</div>
+        <button id="btnDemo">载入示例角色</button>
+      </div>
+      <div id="hint">拖拽移动 · 拖四角圆点缩放 · 拖右下圆钮旋转 · 滚轮缩放视图 · 中键平移 · 右键菜单<br>空格播放 · T 打拍子 · Shift 多选 · 空白处拖拽框选 · Ctrl+C/V 复制粘贴</div>
+      <div id="toast"></div>
+    </section>
+
+    <aside id="inspector">
+      <div class="tabs">
+        <div class="tab on" data-tab="props">属性</div>
+        <div class="tab" data-tab="curve">曲线</div>
+        <div class="tab" data-tab="action">动作</div>
+        <div class="tab" data-tab="scene">场景</div>
+      </div>
+      <div class="panel-body" id="inspBody"></div>
+    </aside>
+  </main>
+
+  <footer>
+    <div id="tlbar">
+      <button id="btnPlay">▶</button>
+      <div class="t" id="timeLabel">0.00s <em>/ 8.00s</em></div>
+      <div class="vline"></div>
+      <span style="color:var(--dim);font-size:10.5px">BPM</span>
+      <input id="bpm" type="number" value="120" min="40" max="240" style="width:52px">
+      <span style="color:var(--dim);font-size:10.5px">拍号</span>
+      <input id="sig" type="number" value="4" min="2" max="12" style="width:40px">
+      <button id="btnSnap" class="on" title="吸附到 1/4 拍">吸附 1/4</button>
+      <div class="vline"></div>
+      <button id="btnRec" class="on" title="自动记录：改属性时在播放头落关键帧（全局）">● 自动记录</button>
+      <button id="btnKeyFrame" title="在播放头处给当前图层手动加一个关键帧">＋ 关键帧</button>
+      <div class="vline"></div>
+      <button id="btnCue" title="在播放头处添加卡点">＋ 卡点</button>
+      <button id="btnTexEvent" title="在播放头处插入贴图切换">＋ 贴图事件</button>
+      <button id="btnMakeComp3" title="把选中关键帧存为组件">＋ 存为组件</button>
+      <select id="quickAction" title="在播放头处插入动作组件" style="width:104px"></select>
+      <div class="vline"></div>
+      <button id="zoomOut" title="缩小（Ctrl+滚轮）">－</button>
+      <span id="zoomLabel" style="color:var(--muted);font-size:10.5px;min-width:36px;text-align:center">100%</span>
+      <button id="zoomIn" title="放大（Ctrl+滚轮）">＋</button>
+      <button id="zoomFit" title="适应窗口">适应</button>
+      <div class="spacer"></div>
+      <span style="color:var(--dim);font-size:10.5px" id="cueCount"></span>
+    </div>
+    <div id="prbar">
+      <button id="btnMidi" title="导入 MIDI 文件（.mid）">导入 MIDI</button>
+      <span class="lbl" id="midiName">无 MIDI</span>
+      <div class="vline"></div>
+      <span class="lbl">口型图层</span>
+      <select id="lipPart" style="width:98px" title="把音符映射到这个图层的贴图上"></select>
+      <span class="lbl">通道</span>
+      <select id="lipCh" style="width:72px" title="只用这个通道的音符做口型"></select>
+      <span class="lbl">静音贴图</span>
+      <select id="lipDef" style="width:74px" title="音符之间（闭嘴）用哪张贴图"></select>
+      <button id="btnLipAuto" title="按音高从低到高把贴图依次分配">自动映射</button>
+      <button id="btnLipBake" title="把音符烘焙成该图层的贴图关键帧">生成口型</button>
+      <button id="btnLipClear" title="删除所有口型关键帧">清除</button>
+      <div class="spacer"></div>
+      <button id="btnPrToggle" title="展开 / 收起钢琴窗">钢琴窗 ▲</button>
+    </div>
+    <div id="prwrap"><canvas id="pr"></canvas></div>
+    <div id="tlwrap"><canvas id="tl"></canvas></div>
+  </footer>
+</div>
+
+<div id="ctxMenu"></div>
+<div id="modal"><div class="mbox">
+  <h3 id="modalTitle">命名</h3>
+  <input id="modalInput" type="text">
+  <div class="mfoot"><button id="modalCancel">取消</button><button id="modalOk" class="primary">确定</button></div>
+</div></div>
+<div id="expModal"><div class="mbox">
+  <h3>导出视频</h3>
+  <div class="erow"><label>帧率</label><select id="expFps">
+    <option value="24">24 fps</option><option value="30" selected>30 fps</option><option value="60">60 fps</option>
+  </select></div>
+  <div class="erow"><label>尺寸</label><select id="expScale">
+    <option value="1">100%</option><option value="0.75">75%</option><option value="0.5">50%</option>
+  </select><span class="ev" id="expPx" style="flex:none;text-align:right;min-width:84px"></span></div>
+  <div class="erow"><label>范围</label><input id="expStart" type="number" step="0.1" min="0" style="width:66px"><span style="color:var(--dim)">→</span><input id="expEnd" type="number" step="0.1" min="0" style="width:66px"><span style="color:var(--dim);font-size:10.5px">秒</span></div>
+  <div class="erow"><label>时长</label><span class="ev" id="expDur"></span></div>
+  <div class="erow"><label>音频</label><span class="ev" id="expAud"></span></div>
+  <div class="ebar"><i id="expBar"></i></div>
+  <div class="estat" id="expStatus">准备就绪</div>
+  <div class="mfoot"><button id="expCancel">取消</button><button id="expOk" class="primary">开始导出</button></div>
+</div></div>
+<div id="dropZone"><b>松开即可导入</b><small>图片 → 作为图层　音频 → 作为音乐　MIDI → 钢琴窗</small></div>
+
+<input id="filePick" type="file" accept="image/*" multiple hidden>
+<input id="projPick" type="file" accept=".json,application/json" hidden>
+<input id="texPick" type="file" accept="image/*" multiple hidden>
+<input id="audioPick" type="file" accept="audio/*" hidden>
+<input id="bgPick" type="file" accept="image/*" hidden>
+<input id="midiPick" type="file" accept=".mid,.midi,audio/midi,audio/x-midi" hidden>
+
+<script>
+"use strict";
+
+/* ============================ 状态 ============================ */
+const S = {
+  doc: { w: 1000, h: 1000 },
+  bg: { type: "color", color: "#14141a", c1: "#1d3346", c2: "#3a1f2e", angle: 135, img: null },
+  bpm: 120, sig: 4, beat: 0, snap: true,
+  parts: [], cues: [], clips: [], selected: null,
+  selKeys: [], selClips: [], selKey: null, selectedClip: null, marquee: null,
+  view: { scale: 1, ox: 0, oy: 0 },
+  playing: false, audio: null, audioDur: 0, audioName: "", audioOffset: 0,
+  pivotMode: false, tab: "props", selKey: null, record: true, expanded: {}, linkScale: true, scaleOnResize: true,
+  layerTab: "flat",
+  midi: null, prOpen: false, prScroll: 0,
+  lip: { partId: null, ch: -1, map: {}, def: 0 },
+  zoom: 1, scrollBeat: 0, scrollRow: 0, visibleBeats: 16, maxScrollBeat: 0, maxRowScroll: 0
+};
+
+let uid = 0;
+const nid = () => "p" + (++uid);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const view = document.getElementById("view");
+const ctx = view.getContext("2d");
+const tl = document.getElementById("tl");
+const tctx = tl.getContext("2d");
+
+/* ============================ 撤销 ============================ */
+let undoStack = [], redoStack = [], pending = null;
+
+function cloneState(){
+  return {
+    doc: { ...S.doc }, bg: { ...S.bg }, bpm: S.bpm, sig: S.sig,
+    cues: S.cues.slice(),
+    clips: S.clips.map(c => ({ ...c, base: { ...c.base } })),
+    parts: S.parts.map(p => ({
+      ...p,
+      bend: p.bend ? p.bend.slice() : null,
+      mesh: p.mesh ? { ...p.mesh } : null,
+      spring: p.spring ? { ...p.spring } : null,
+      variants: p.variants.map(v => ({ ...v })),
+      keys: p.keys.map(k => ({
+        ...k,
+        bend: k.bend ? k.bend.slice() : undefined,
+        ease: k.ease ? { ...k.ease, p: k.ease.p ? k.ease.p.slice() : null } : null
+      }))
+    })),
+    midi: S.midi ? { ...S.midi, notes: S.midi.notes.map(n => ({ ...n })), pitches: S.midi.pitches.slice(), chans: S.midi.chans.slice() } : null,
+    lip: { partId: S.lip.partId, ch: S.lip.ch, def: S.lip.def, map: { ...S.lip.map } },
+    selId: S.selected ? S.selected.id : null
+  };
+}
+function pushUndo(){
+  undoStack.push(cloneState());
+  if (undoStack.length > 80) undoStack.shift();
+  redoStack.length = 0;
+  syncUndoBtns();
+}
+function beginEdit(){ if (!pending) pending = cloneState(); }
+function endEdit(){
+  if (pending){ undoStack.push(pending); if (undoStack.length > 80) undoStack.shift(); redoStack.length = 0; pending = null; syncUndoBtns(); }
+}
+function restore(st){
+  S.doc = { ...st.doc }; S.bg = { ...st.bg }; S.bpm = st.bpm; S.sig = st.sig;
+  S.cues = st.cues.slice();
+  S.clips = (st.clips || []).map(c => ({ ...c, base: { ...c.base } }));
+  S.parts = st.parts.map(p => ({
+    ...p,
+    variants: p.variants.map(v => ({ ...v })),
+    keys: p.keys.map(k => ({ ...k, ease: k.ease ? { ...k.ease, p: k.ease.p ? k.ease.p.slice() : null } : null }))
+  }));
+  S.selected = st.selId ? S.parts.find(p => p.id === st.selId) || null : null;
+  S.midi = st.midi ? { ...st.midi, notes: st.midi.notes.map(n => ({ ...n })), pitches: st.midi.pitches.slice(), chans: st.midi.chans.slice() } : null;
+  if (st.lip) S.lip = { partId: st.lip.partId, ch: st.lip.ch, def: st.lip.def, map: { ...st.lip.map } };
+  clearSel();
+  applyAt(S.beat);
+  renderAll();
+}
+
+/* ---------- 选择集合 ---------- */
+function clearSel(){
+  S.selKeys = []; S.selClips = [];
+  S.selKey = null; S.selectedClip = null;
+}
+function setSelKey(partId, key){
+  S.selKey = key ? { partId, t: key.t, key } : null;
+}
+function selKeyToggle(partId, key, additive){
+  if (!additive){ S.selKeys = []; S.selClips = []; S.selectedClip = null; }
+  const i = S.selKeys.findIndex(s => s.key === key);
+  if (additive && i >= 0) S.selKeys.splice(i, 1);
+  else if (i < 0) S.selKeys.push({ partId, key });
+  const last = S.selKeys[S.selKeys.length - 1];
+  setSelKey(last ? last.partId : null, last ? last.key : null);
+}
+function selClipToggle(clip, additive){
+  if (!additive){ S.selClips = []; S.selKeys = []; S.selKey = null; }
+  const i = S.selClips.indexOf(clip);
+  if (additive && i >= 0) S.selClips.splice(i, 1);
+  else if (i < 0) S.selClips.push(clip);
+  S.selectedClip = S.selClips[0] || null;
+}
+function hasSel(){ return S.selKeys.length > 0 || S.selClips.length > 0; }
+function undo(){ if (!undoStack.length) return; redoStack.push(cloneState()); restore(undoStack.pop()); syncUndoBtns(); }
+function redo(){ if (!redoStack.length) return; undoStack.push(cloneState()); restore(redoStack.pop()); syncUndoBtns(); }
+function syncUndoBtns(){
+  document.getElementById("btnUndo").disabled = !undoStack.length;
+  document.getElementById("btnRedo").disabled = !redoStack.length;
+}
+
+/* ============================ 缓动曲线 ============================ */
+const EASE_PRESETS = [
+  { name: "线性",   p: [0, 0, 1, 1] },
+  { name: "缓入",   p: [0.42, 0, 1, 1] },
+  { name: "缓出",   p: [0, 0, 0.58, 1] },
+  { name: "缓入缓出", p: [0.42, 0, 0.58, 1] },
+  { name: "强缓出", p: [0, 0, 0.2, 1] },
+  { name: "回弹",   p: [0.34, 1.56, 0.64, 1] },
+  { name: "蓄力",   p: [0.68, -0.55, 0.27, 1.55] },
+  { name: "阶跃",   p: null },
+  { name: "缓入强出", p: [0.7, 0, 0.2, 1] }
+];
+const DEF_EASE = { p: [0.42, 0, 0.58, 1] };
+
+function bezierY(x, p){
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const [x1, y1, x2, y2] = p;
+  let t = x;
+  for (let i = 0; i < 8; i++){
+    const mt = 1 - t;
+    const bx = 3*mt*mt*t*x1 + 3*mt*t*t*x2 + t*t*t;
+    const dx = 3*mt*mt*x1 + 6*mt*t*(x2 - x1) + 3*t*t*(1 - x2);
+    if (Math.abs(dx) < 1e-6) break;
+    t -= (bx - x) / dx;
+    t = clamp(t, 0, 1);
+  }
+  const mt = 1 - t;
+  return 3*mt*mt*t*y1 + 3*mt*t*t*y2 + t*t*t;
+}
+function easeVal(ease, x){
+  if (!ease || !ease.p) return x < 1 ? 0 : 1;
+  return bezierY(x, ease.p);
+}
+
+/* ============================ 矩阵 ============================ */
+function mul(m, n){
+  return {
+    a: m.a*n.a + m.c*n.b, b: m.b*n.a + m.d*n.b,
+    c: m.a*n.c + m.c*n.d, d: m.b*n.c + m.d*n.d,
+    e: m.a*n.e + m.c*n.f + m.e, f: m.b*n.e + m.d*n.f + m.f
+  };
+}
+function localMatrix(p){
+  const c = Math.cos(p.rot), s = Math.sin(p.rot);
+  const fx = p.flipX ? -1 : 1, fy = p.flipY ? -1 : 1;
+  return { a:c*p.sx*fx, b:s*p.sx*fx, c:-s*p.sy*fy, d:c*p.sy*fy, e:p.x, f:p.y };
+}
+function rootMatrix(){ const v = S.view; return { a:v.scale, b:0, c:0, d:v.scale, e:v.ox, f:v.oy }; }
+function worldOf(p, seen){
+  seen = seen || new Set();
+  if (seen.has(p.id)) return rootMatrix();
+  seen.add(p.id);
+  const par = p.parentId ? S.parts.find(q => q.id === p.parentId) : null;
+  const pm = par ? worldOf(par, seen) : rootMatrix();
+  return mul(pm, localMatrix(p));
+}
+function invLinear(m, dx, dy){
+  const det = m.a*m.d - m.b*m.c || 1e-6;
+  return { x:( m.d*dx - m.c*dy)/det, y:(-m.b*dx + m.a*dy)/det };
+}
+
+/* ============================ 图片工具 ============================ */
+function readDataURL(f){ return new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); }); }
+function loadSrc(src){ return new Promise(r => { const im = new Image(); im.onload = () => r(im); im.src = src; }); }
+
+const ALPHA = new WeakMap();          // img -> { w, h, a:Uint8Array }，用于透明区域点击穿透
+function alphaBBox(img){
+  const maxSide = 420;
+  const k = Math.min(1, maxSide / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.drawImage(img, 0, 0, w, h);
+  let data;
+  try { data = g.getImageData(0, 0, w, h).data; } catch(e){ return { x:0, y:0, w:img.width, h:img.height }; }
+  const a = new Uint8Array(w * h);
+  for (let i = 0, n = w * h; i < n; i++) a[i] = data[i * 4 + 3];
+  ALPHA.set(img, { w, h, a });
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){
+    if (a[y * w + x] > 8){
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return { x:0, y:0, w:img.width, h:img.height };
+  return { x:x0/k, y:y0/k, w:(x1-x0+1)/k, h:(y1-y0+1)/k };
+}
+/* 取图像某点的 alpha（u/v 为图像像素坐标）。没有缓存时现场采样一次。 */
+function alphaMapOf(img){
+  let m = ALPHA.get(img);
+  if (m) return m;
+  if (!img || !img.width) return null;
+  try {
+    const maxSide = 300;
+    const k = Math.min(1, maxSide / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(img, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h).data;
+    const a = new Uint8Array(w * h);
+    for (let i = 0, n = w * h; i < n; i++) a[i] = d[i * 4 + 3];
+    m = { w, h, a };
+    ALPHA.set(img, m);
+    return m;
+  } catch(e){ return null; }
+}
+function makeThumb(img, bb){
+  const size = 44;
+  const c = document.createElement("canvas"); c.width = size; c.height = size;
+  const g = c.getContext("2d");
+  const k = Math.min(size / bb.w, size / bb.h);
+  const w = bb.w * k, h = bb.h * k;
+  g.drawImage(img, bb.x, bb.y, bb.w, bb.h, (size-w)/2, (size-h)/2, w, h);
+  return c.toDataURL();
+}
+
+/* ============================ 部件识别 ============================ */
+const SIDE_L = /_l\b|left|左/;
+const SIDE_R = /_r\b|right|右/;
+function classify(slot){
+  const s = slot.toLowerCase();
+  if (/head|头|face|脸|面|hair|发|eye|眼|mouth|嘴|brow|眉/.test(s)) return "head";
+  if (/arm|手|臂/.test(s)) return SIDE_L.test(s) ? "arm_l" : "arm_r";
+  if (/leg|腿|脚|foot/.test(s)) return SIDE_L.test(s) ? "leg_l" : "leg_r";
+  return "body";
+}
+const KIND_ORDER = { body:0, leg_l:1, leg_r:2, arm_l:3, arm_r:4, head:5 };
+
+function makePart(it){
+  const bbox = alphaBBox(it.img);
+  const cx = bbox.x + bbox.w/2, cy = bbox.y + bbox.h/2;
+  return {
+    id: nid(), slot: it.slot, kind: classify(it.slot),
+    variants: [{ variant: it.variant, img: it.img, bbox, ax: cx, ay: cy, thumb: makeThumb(it.img, bbox) }],
+    texIndex: 0, x: cx, y: cy, rot: 0, sx: 1, sy: 1, alpha: 1,
+    flipX: false, flipY: false,
+    ax: cx, ay: cy, pu: 0.5, pv: 0.5, parentId: null, keys: [], visible: true, locked: false, bbox
+  };
+}
+
+function applyPivot(p){
+  const u = p.pu === undefined ? 0.5 : p.pu;
+  const v = p.pv === undefined ? 0.5 : p.pv;
+  for (const it of p.variants){
+    const bb = it.bbox;
+    it.ax = bb.x + u * bb.w;
+    it.ay = bb.y + v * bb.h;
+  }
+  const cur = p.variants[p.texIndex] || p.variants[0];
+  if (cur){ p.ax = cur.ax; p.ay = cur.ay; }
+}
+
+async function addItems(items){
+  if (!items.length) return;
+  pushUndo();
+  const imgs = [];
+  for (const it of items) imgs.push(Object.assign({}, it, { img: await loadSrc(it.src) }));
+
+  if (!S.parts.length && imgs[0].img.width){
+    S.doc = { w: imgs[0].img.width, h: imgs[0].img.height };
+  }
+
+  for (const it of imgs){
+    let p = S.parts.find(q => q.slot === it.slot);
+    if (!p){
+      p = makePart(it);
+      S.parts.push(p);
+    } else {
+      const bbox = alphaBBox(it.img);
+      p.variants.push({
+        variant: it.variant, img: it.img, bbox,
+        ax: bbox.x + bbox.w/2, ay: bbox.y + bbox.h/2,
+        thumb: makeThumb(it.img, bbox)
+      });
+      applyPivot(p);
+    }
+  }
+
+  S.parts.sort((a, b) => (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9));
+  for (const p of S.parts){
+    if (p.parentId) continue;
+    if (p.kind === "body") continue;
+    const body = S.parts.find(q => q.kind === "body");
+    if (body && body.id !== p.id){
+      p.parentId = body.id;
+      p.x = p.variants[0].ax - body.variants[0].ax;
+      p.y = p.variants[0].ay - body.variants[0].ay;
+    }
+  }
+
+  fitView();
+  document.getElementById("drop").style.display = "none";
+  if (!S.selected) S.selected = S.parts[0];
+  renderAll();
+  toast("已导入 " + imgs.length + " 张图层");
+}
+
+async function addFiles(files){
+  const items = [];
+  for (const f of files){
+    if (!isImageFile(f)) continue;
+    const base = f.name.replace(/\.[^.]+$/, "");
+    const bits = base.split("__");
+    items.push({ slot: (bits[0] || base).trim(), variant: (bits[1] || "").trim(), src: await readDataURL(f) });
+  }
+  await addItems(items);
+}
+
+async function addTexture(files){
+  const p = S.selected;
+  if (!p){ toast("先选中一个图层"); return; }
+  const items = [];
+  for (const f of files){
+    if (!isImageFile(f)) continue;
+    const base = f.name.replace(/\.[^.]+$/, "");
+    const bits = base.split("__");
+    items.push({ slot: p.slot, variant: (bits[1] || base).trim(), src: await readDataURL(f) });
+  }
+  if (!items.length) return;
+  pushUndo();
+  for (const it of items){
+    const img = await loadSrc(it.src);
+    const bbox = alphaBBox(img);
+    p.variants.push({
+      variant: it.variant, img, bbox,
+      ax: bbox.x + bbox.w/2, ay: bbox.y + bbox.h/2,
+      thumb: makeThumb(img, bbox)
+    });
+  }
+  applyPivot(p);
+  renderAll();
+  toast("已添加 " + items.length + " 张贴图到「" + p.slot + "」");
+}
+
+/* ============================ 视图 ============================ */
+function fitView(){
+  const W = view.clientWidth || 800, H = view.clientHeight || 600;
+  const s = Math.min(W / S.doc.w, H / S.doc.h) * 0.88;
+  S.view.scale = s;
+  S.view.ox = (W - S.doc.w * s) / 2;
+  S.view.oy = (H - S.doc.h * s) / 2;
+}
+
+/* ============================ 关键帧 ============================ */
+function keySnapshot(p, beat, patch){
+  const k = { t: beat, x:p.x, y:p.y, rot:p.rot, sx:p.sx, sy:p.sy, alpha:p.alpha, tex:p.texIndex,
+              flipX: !!p.flipX, flipY: !!p.flipY,
+              ease: { p: [0.42, 0, 0.58, 1] } };
+  if (p.bend && p.bend.length) k.bend = p.bend.slice();
+  if (patch) Object.assign(k, patch);
+  return k;
+}
+function upsertKey(p, beat, patch){
+  const snap = keySnapshot(p, beat, patch);
+  const ex = p.keys.find(k => Math.abs(k.t - beat) < 1e-3);
+  if (ex){
+    const keepEase = ex.ease;
+    Object.assign(ex, snap);
+    if (!patch || !patch.ease) ex.ease = keepEase;
+  } else {
+    p.keys.push(snap);
+    p.keys.sort((a, b) => a.t - b.t);
+  }
+  applyAt(S.beat);
+}
+function touchForce(p){
+  const snap = keySnapshot(p, S.beat);
+  const ex = p.keys.find(k => Math.abs(k.t - S.beat) < 1e-3);
+  if (ex){ const keepEase = ex.ease; Object.assign(ex, snap); ex.ease = keepEase; }
+  else { p.keys.push(snap); p.keys.sort((a, b) => a.t - b.t); }
+}
+function touch(p){
+  const selThis = S.selKey && S.selKey.partId === p.id;
+  if (!S.record && !selThis) return;
+  touchForce(p);
+}
+
+function clipValueAt(clip, beat){
+  const a = ACTION_LIB.find(x => x.id === clip.actionId);
+  if (!a || !a.keys.length) return null;
+  const ks = a.keys;
+  const span = ks[ks.length - 1].t || 0.25;
+  const k = (beat - clip.start) / Math.max(0.001, clip.dur);
+  if (k < -0.001 || k > 1.001) return null;
+  const tt = clamp(k, 0, 1) * span;
+
+  let i0 = 0;
+  for (let i = 0; i < ks.length - 1; i++){
+    if (ks[i].t <= tt && tt <= ks[i + 1].t){ i0 = i; break; }
+    i0 = i;
+  }
+  const A = ks[i0], B = ks[Math.min(i0 + 1, ks.length - 1)];
+  const seg = B.t - A.t;
+  const raw = seg > 1e-6 ? (tt - A.t) / seg : 0;
+  const e = A.ease !== undefined ? A.ease : { p: [0.42, 0, 0.58, 1] };
+  const t = easeVal(e, clamp(raw, 0, 1));
+
+  const get = (key, dflt) => {
+    const av = A[key] !== undefined ? A[key] : dflt;
+    const bv = B[key] !== undefined ? B[key] : av;
+    return av + (bv - av) * t;
+  };
+  const base = clip.base;
+  const rel = !!a.rel;
+  const hasSx = A.sx !== undefined || B.sx !== undefined;
+  const hasSy = A.sy !== undefined || B.sy !== undefined;
+  const hasAl = A.alpha !== undefined || B.alpha !== undefined;
+  const sxf = hasSx ? get("sx", 1) : 1;
+  const syf = hasSy ? get("sy", 1) : 1;
+  const alf = hasAl ? get("alpha", 1) : 1;
+
+  return {
+    x: base.x + (A.x !== undefined || B.x !== undefined ? get("x", 0) : 0),
+    y: base.y + (A.y !== undefined || B.y !== undefined ? get("y", 0) : 0),
+    rot: base.rot + (A.rot !== undefined || B.rot !== undefined ? get("rot", 0) : 0),
+    sx: hasSx ? (rel ? base.sx * sxf : sxf) : base.sx,
+    sy: hasSy ? (rel ? base.sy * syf : syf) : base.sy,
+    alpha: hasAl ? (rel ? base.alpha * alf : alf) : base.alpha,
+    tex: (t < 0.5 ? (A.tex !== undefined ? A.tex : base.tex) : (B.tex !== undefined ? B.tex : base.tex))
+  };
+}
+
+function activeClipFor(p, beat){
+  return S.clips.find(c => c.partId === p.id && beat >= c.start - 1e-6 && beat <= c.start + c.dur + 1e-6) || null;
+}
+
+function applyFlip(p, beat, clip){
+  if (clip){                       // 片段覆盖时，镜像归片段管
+    p.flipX = !!clip.flipX;
+    p.flipY = !!clip.flipY;
+    return;
+  }
+  if (!p.keys.length) return;
+  const ks = p.keys;
+  let a = ks[0];
+  for (let i = 0; i < ks.length; i++){
+    if (ks[i].t <= beat + 1e-6) a = ks[i];
+    else break;
+  }
+  p.flipX = !!a.flipX;
+  p.flipY = !!a.flipY;
+}
+
+function applyAt(beat){
+  for (const p of S.parts){
+    const clip = activeClipFor(p, beat);
+    applyFlip(p, beat, clip);
+    if (clip){
+      const v = clipValueAt(clip, beat);
+      if (v){
+        p.x = v.x; p.y = v.y; p.rot = v.rot;
+        p.sx = v.sx; p.sy = v.sy; p.alpha = v.alpha;
+        p.texIndex = clamp(Math.round(v.tex), 0, p.variants.length - 1);
+        continue;
+      }
+    }
+    if (!p.keys.length) continue;
+    const ks = p.keys;
+    let a = ks[0], b = ks[ks.length - 1];
+    if (beat <= a.t) b = a;
+    else if (beat >= b.t) a = b;
+    else for (let i = 0; i < ks.length - 1; i++){
+      if (ks[i].t <= beat && beat <= ks[i + 1].t){ a = ks[i]; b = ks[i + 1]; break; }
+    }
+    const span = b.t - a.t;
+    const raw = span > 1e-6 ? (beat - a.t) / span : 0;
+    const t = easeVal(a.ease, clamp(raw, 0, 1));
+    p.x = a.x + (b.x - a.x) * t;
+    p.y = a.y + (b.y - a.y) * t;
+    p.rot = a.rot + (b.rot - a.rot) * t;
+    p.sx = a.sx + (b.sx - a.sx) * t;
+    p.sy = a.sy + (b.sy - a.sy) * t;
+    p.alpha = a.alpha + (b.alpha - a.alpha) * t;
+    p.texIndex = clamp(t < 0.5 ? a.tex : b.tex, 0, p.variants.length - 1);
+    if (p.bend && p.bend.length){
+      const A = a.bend || [], B = b.bend || [];
+      for (let i = 0; i < p.bend.length; i++){
+        const av = A[i] || 0, bv = B[i] === undefined ? av : B[i];
+        p.bend[i] = av + (bv - av) * t;
+      }
+    }
+  }
+}
+
+/* ============================ 绘制 ============================ */
+function drawBackground(gc, forExport){
+  gc = gc || ctx;
+  const v = S.view, d = S.doc;
+  const x = v.ox, y = v.oy, w = d.w * v.scale, h = d.h * v.scale;
+  const bg = S.bg;
+  if (bg.type === "color"){
+    gc.fillStyle = bg.color;
+    gc.fillRect(x, y, w, h);
+  } else if (bg.type === "gradient"){
+    const rad = (bg.angle - 90) * Math.PI / 180;
+    const cx = x + w/2, cy = y + h/2;
+    const len = (Math.abs(w * Math.cos(rad)) + Math.abs(h * Math.sin(rad))) / 2;
+    const gr = gc.createLinearGradient(cx - Math.cos(rad)*len, cy - Math.sin(rad)*len,
+                                       cx + Math.cos(rad)*len, cy + Math.sin(rad)*len);
+    gr.addColorStop(0, bg.c1); gr.addColorStop(1, bg.c2);
+    gc.fillStyle = gr;
+    gc.fillRect(x, y, w, h);
+  } else if (bg.type === "image" && bg.img){
+    const iw = bg.img.width, ih = bg.img.height;
+    const k = Math.max(w / iw, h / ih);
+    gc.save();
+    gc.beginPath(); gc.rect(x, y, w, h); gc.clip();
+    gc.drawImage(bg.img, cx0(x, w, iw, k), cx0(y, h, ih, k), iw*k, ih*k);
+    gc.restore();
+  } else if (forExport){
+    gc.fillStyle = "#000";
+    gc.fillRect(x, y, w, h);
+  } else {
+    const cell = 10;
+    for (let i = 0; i * cell < w; i++) for (let j = 0; j * cell < h; j++){
+      gc.fillStyle = ((i + j) % 2) ? "#1a1a1a" : "#202020";
+      gc.fillRect(x + i*cell, y + j*cell, Math.min(cell, w - i*cell), Math.min(cell, h - j*cell));
+    }
+  }
+}
+function cx0(origin, span, nat, k){ return origin + (span - nat*k) / 2; }
+
+/* ---------- 网格变形绘制 ---------- */
+function drawBent(g, p, it){
+  const bb = it.bbox, n = p.bend.length;
+  if (n < 1) return;
+  const segH = bb.h / n;
+  const x0 = bb.x + bb.w/2 - it.ax;
+  const y0 = bb.y - it.ay;
+  const ov = Math.min(segH * 0.6, 3);     // 关节重叠，盖住楔形缝
+  const top = bb.y, bottom = bb.y + bb.h;
+
+  // 先算出每个关节的位置和累计角度（局部坐标，原点在链起点）
+  const jx = new Float64Array(n + 1), jy = new Float64Array(n + 1), acc = new Float64Array(n + 1);
+  let a = 0;
+  for (let k = 0; k < n; k++){
+    a += p.bend[k] || 0;
+    acc[k + 1] = a;
+    jx[k + 1] = jx[k] - Math.sin(a) * segH;
+    jy[k + 1] = jy[k] + Math.cos(a) * segH;
+  }
+
+  g.save();
+  g.translate(x0, y0);
+  for (let k = 0; k < n; k++){
+    const segTop = bb.y + k * segH;
+    const sy0 = Math.max(top, segTop - ov);
+    const sy1 = Math.min(bottom, segTop + segH + ov);
+    const sh = sy1 - sy0;
+    if (sh <= 0.4) continue;
+
+    // 用「上一段角度 + 本段角度」的平均值来画，并把切片居中在段中点：
+    // 关节两侧各差一半，接缝的台阶减半，明显更顺
+    const mid = (acc[k] + acc[k + 1]) / 2;
+    const cx = (jx[k] + jx[k + 1]) / 2;
+    const cy = (jy[k] + jy[k + 1]) / 2;
+
+    g.save();
+    g.translate(cx, cy);
+    g.rotate(mid);
+    g.drawImage(it.img, bb.x, sy0, bb.w, sh, -bb.w/2, (sy0 - segTop) - segH/2, bb.w, sh);
+    g.restore();
+  }
+  g.restore();
+}
+
+function paintPart(g, p, it, m){
+  g.save();
+  g.transform(m.a, m.b, m.c, m.d, m.e, m.f);
+  g.globalAlpha = clamp(p.alpha, 0, 1);
+  if (p.mesh && p.mesh.on && p.bend && p.bend.length) drawBent(g, p, it);
+  else g.drawImage(it.img, -it.ax, -it.ay);
+  g.restore();
+}
+
+function draw(){
+  const dpr = window.devicePixelRatio || 1;
+  const W = view.clientWidth, H = view.clientHeight;
+  if (view.width !== Math.round(W*dpr) || view.height !== Math.round(H*dpr)){
+    view.width = Math.round(W*dpr); view.height = Math.round(H*dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#0d0d0d";
+  ctx.fillRect(0, 0, W, H);
+
+  const v = S.view, d = S.doc;
+  const fx = v.ox, fy = v.oy, fw = d.w * v.scale, fh = d.h * v.scale;
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = 18;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(fx, fy, fw, fh);
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(fx, fy, fw, fh); ctx.clip();
+  drawBackground();
+
+  for (const p of S.parts){
+    if (!p.visible) continue;
+    const it = p.variants[p.texIndex] || p.variants[0];
+    if (!it) continue;
+    paintPart(ctx, p, it, worldOf(p));
+  }
+  ctx.restore();
+
+  ctx.strokeStyle = "#4a4a46";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(fx + .5, fy + .5, fw - 1, fh - 1);
+
+  if (S.selected && S.selected.visible) drawGizmo(S.selected);
+}
+
+/* ============================ 变换手柄 ============================ */
+const GIZ = { btnR: 11, btnHit: 14, dotR: 5, dotHit: 11, gap: 13 };
+
+function gizmoQuad(p){
+  const it = p.variants[p.texIndex] || p.variants[0];
+  if (!it) return null;
+  const m = worldOf(p), bb = it.bbox;
+  const L = [[bb.x - it.ax, bb.y - it.ay], [bb.x + bb.w - it.ax, bb.y - it.ay],
+             [bb.x + bb.w - it.ax, bb.y + bb.h - it.ay], [bb.x - it.ax, bb.y + bb.h - it.ay]];
+  const pts = L.map(([u, v]) => ({ x: m.a*u + m.c*v + m.e, y: m.b*u + m.d*v + m.f }));
+  const cx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+  const cy = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
+  return { pts, cx, cy, m, it, L };
+}
+
+function gizmoButtons(g){
+  const W = view.clientWidth || 900, H = view.clientHeight || 600;
+  const put = (i, type) => {
+    const c = g.pts[i];
+    const a = g.pts[(i + 1) % 4], b = g.pts[(i + 3) % 4];
+    const ux = c.x - a.x, uy = c.y - a.y, ul = Math.hypot(ux, uy) || 1;
+    const vx = c.x - b.x, vy = c.y - b.y, vl = Math.hypot(vx, vy) || 1;
+    let dx = ux/ul + vx/vl, dy = uy/ul + vy/vl;
+    const dl = Math.hypot(dx, dy) || 1;
+    dx /= dl; dy /= dl;
+    const off = GIZ.btnR + GIZ.gap;
+    return {
+      type, i,
+      x: clamp(c.x + dx*off, GIZ.btnR + 2, W - GIZ.btnR - 2),
+      y: clamp(c.y + dy*off, GIZ.btnR + 2, H - GIZ.btnR - 2)
+    };
+  };
+  return [put(0, "del"), put(3, "dup"), put(2, "rot")];
+}
+
+function drawGizmo(p){
+  const g = gizmoQuad(p);
+  if (!g) return;
+  const { pts, m } = g;
+  const locked = p.locked;
+
+  ctx.save();
+  ctx.strokeStyle = locked ? "rgba(136,135,128,.9)" : "rgba(255,255,255,.9)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < 4; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+  ctx.stroke();
+
+  if (!locked){
+    for (const c of pts){
+      ctx.beginPath(); ctx.arc(c.x, c.y, GIZ.dotR, 0, Math.PI*2);
+      ctx.fillStyle = "#fff"; ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+
+  ctx.fillStyle = locked ? "#888780" : "#5DCAA5";
+  ctx.beginPath(); ctx.arc(m.e, m.f, 3.5, 0, Math.PI*2); ctx.fill();
+
+  if (S.pivotMode){
+    ctx.strokeStyle = "#F0997B";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(m.e - 15, m.f); ctx.lineTo(m.e + 15, m.f); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(m.e, m.f - 15); ctx.lineTo(m.e, m.f + 15); ctx.stroke();
+    ctx.beginPath(); ctx.arc(m.e, m.f, 9, 0, Math.PI*2); ctx.stroke();
+  }
+
+  if (!locked){
+    for (const b of gizmoButtons(g)){
+      ctx.beginPath(); ctx.arc(b.x, b.y, GIZ.btnR, 0, Math.PI*2);
+      ctx.fillStyle = "rgba(255,255,255,.96)"; ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,.25)"; ctx.lineWidth = 1; ctx.stroke();
+
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.strokeStyle = "#141414"; ctx.fillStyle = "#141414";
+      if (b.type === "del"){
+        ctx.lineWidth = 1.5; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(-3, -3); ctx.lineTo(3, 3); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(3, -3); ctx.lineTo(-3, 3); ctx.stroke();
+      } else if (b.type === "dup"){
+        ctx.font = "bold 9px -apple-system,system-ui,sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("+1", 0, 0.5);
+      } else {
+        ctx.lineWidth = 1.3; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.arc(0, 0, 4, -Math.PI*0.72, Math.PI*0.62); ctx.stroke();
+        const th = Math.PI*0.62;
+        const ex = Math.cos(th)*4, ey = Math.sin(th)*4;
+        const tx = -Math.sin(th), ty = Math.cos(th);
+        const px = -ty, py = tx;
+        ctx.beginPath();
+        ctx.moveTo(ex + tx*2.6, ey + ty*2.6);
+        ctx.lineTo(ex - tx*0.9 + px*2.1, ey - ty*0.9 + py*2.1);
+        ctx.lineTo(ex - tx*0.9 - px*2.1, ey - ty*0.9 - py*2.1);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  if (gizmoDrag && gizmoDrag.type === "rot"){
+    const deg = Math.round(p.rot*180/Math.PI);
+    ctx.font = "bold 11px -apple-system,system-ui,sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const label = deg + "°";
+    const w = ctx.measureText(label).width + 12;
+    ctx.fillStyle = "rgba(0,0,0,.75)";
+    roundRect(ctx, m.e - w/2, m.f - 38, w, 19, 5); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.fillText(label, m.e, m.f - 28.5);
+  }
+  ctx.restore();
+}
+
+function hitGizmo(mx, my){
+  if (!S.selected || !S.selected.visible || S.selected.locked) return null;
+  const g = gizmoQuad(S.selected);
+  if (!g) return null;
+  for (const b of gizmoButtons(g)){
+    if (Math.hypot(mx - b.x, my - b.y) <= GIZ.btnHit) return { type: b.type, i: b.i, g };
+  }
+  for (let i = 0; i < 4; i++){
+    if (Math.hypot(mx - g.pts[i].x, my - g.pts[i].y) <= GIZ.dotHit) return { type: "scale", i, g };
+  }
+  return null;
+}
+
+function deletePart(p){
+  const par = p.parentId ? S.parts.find(q => q.id === p.parentId) : null;
+  for (const c of S.parts){
+    if (c.parentId !== p.id) continue;
+    const w = worldOf(c);
+    c.parentId = par ? par.id : null;
+    const pm = par ? worldOf(par) : rootMatrix();
+    const d = invLinear(pm, w.e - pm.e, w.f - pm.f);
+    c.x = d.x; c.y = d.y;
+  }
+  S.parts = S.parts.filter(q => q.id !== p.id);
+  S.clips = S.clips.filter(c => c.partId !== p.id);
+  S.selected = null; S.selectedClip = null; S.selKey = null;
+  applyAt(S.beat); renderAll();
+  toast("已删除「" + p.slot + "」，可撤销");
+}
+
+function duplicatePart(p){
+  const variants = p.variants.map(v => ({ variant: v.variant, img: v.img, bbox: v.bbox, ax: v.ax, ay: v.ay, thumb: v.thumb }));
+  const np = {
+    id: nid(), slot: p.slot + " 副本", kind: p.kind, variants, texIndex: p.texIndex,
+    x: p.x + 40, y: p.y + 40, rot: p.rot, sx: p.sx, sy: p.sy, alpha: p.alpha,
+    ax: p.ax, ay: p.ay, pu: p.pu, pv: p.pv, parentId: p.parentId,
+    keys: p.keys.map(k => ({ ...k })), visible: true, locked: false, bbox: p.bbox
+  };
+  S.parts.push(np);
+  S.selected = np; S.selectedClip = null; S.selKey = null;
+  renderAll();
+  toast("已复制「" + p.slot + "」");
+}
+
+/* ============================ 时间轴 ============================ */
+let totalBeats = 16, pxPerBeat = 60, labelW = 96, rulerH = 22, rowH = 18;
+const tlRows = [];
+
+const SB_H = 9;
+
+function timelineLayout(){
+  const W = tl.clientWidth || 800, H = tl.clientHeight || 150;
+  const lastKey = S.parts.reduce((m, p) => p.keys.reduce((mm, k) => Math.max(mm, k.t), m), 0);
+  const lastCue = S.cues.reduce((m, c) => Math.max(m, c), 0);
+  const audioBeats = S.audio ? S.audioDur * S.bpm / 60 : 0;
+  const clipEnd = S.clips.reduce((m, c) => Math.max(m, c.start + c.dur), 0);
+  const midiBeats = S.midi ? (S.midi.durBeat || 0) : 0;
+  totalBeats = Math.max(S.sig * 4, Math.ceil(Math.max(lastKey, lastCue, audioBeats, clipEnd, midiBeats, S.beat) + 2));
+
+  labelW = 96;
+  const availW = Math.max(60, W - labelW - 10);
+  const fit = availW / totalBeats;
+  pxPerBeat = fit * S.zoom;
+
+  const visibleBeats = availW / pxPerBeat;
+  S.visibleBeats = visibleBeats;
+  const maxScroll = Math.max(0, totalBeats - visibleBeats);
+  S.scrollBeat = clamp(S.scrollBeat, 0, maxScroll);
+  S.maxScrollBeat = maxScroll;
+
+  const list = S.parts.slice().reverse();
+  const availH = Math.max(20, H - rulerH - 4 - SB_H);
+  rowH = list.length ? clamp(availH / list.length, 16, 26) : 18;
+  const contentH = list.length * rowH;
+  const maxRowScroll = Math.max(0, contentH - availH);
+  S.scrollRow = clamp(S.scrollRow, 0, maxRowScroll);
+  S.maxRowScroll = maxRowScroll;
+  S.availH = availH;
+
+  tlRows.length = 0;
+  list.forEach((p, i) => tlRows.push({ p, y: rulerH + i * rowH - S.scrollRow }));
+  return { W, H, availW, contentH, maxRowScroll, availH };
+}
+const xOf = b => labelW + (b - S.scrollBeat) * pxPerBeat;
+const beatOf = x => S.scrollBeat + (x - labelW) / pxPerBeat;
+
+function zoomAt(newZoom, anchorX){
+  const W = tl.clientWidth || 800;
+  const availW = W - labelW - 10;
+  const b = beatOf(anchorX);
+  S.zoom = clamp(newZoom, 0.2, 40);
+  pxPerBeat = (availW / totalBeats) * S.zoom;
+  S.scrollBeat = Math.max(0, b - (anchorX - labelW) / pxPerBeat);
+  drawTimeline();
+  syncZoomLabel();
+}
+function setZoom(z){
+  const W = tl.clientWidth || 800;
+  zoomAt(z, labelW + (W - labelW) / 2);
+}
+function zoomFit(){
+  S.zoom = 1; S.scrollBeat = 0; S.scrollRow = 0;
+  drawTimeline(); syncZoomLabel();
+}
+function syncZoomLabel(){
+  const el = document.getElementById("zoomLabel");
+  if (el) el.textContent = Math.round(S.zoom * 100) + "%";
+}
+
+function roundRect(g, x, y, w, h, r){
+  const rr = Math.min(r, Math.abs(w)/2, Math.abs(h)/2);
+  g.beginPath();
+  g.moveTo(x + rr, y);
+  g.lineTo(x + w - rr, y);
+  g.quadraticCurveTo(x + w, y, x + w, y + rr);
+  g.lineTo(x + w, y + h - rr);
+  g.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  g.lineTo(x + rr, y + h);
+  g.quadraticCurveTo(x, y + h, x, y + h - rr);
+  g.lineTo(x, y + rr);
+  g.quadraticCurveTo(x, y, x + rr, y);
+  g.closePath();
+}
+
+function drawTimeline(){
+  const dpr = window.devicePixelRatio || 1;
+  const { W, H } = timelineLayout();
+  if (tl.width !== Math.round(W*dpr) || tl.height !== Math.round(H*dpr)){
+    tl.width = Math.round(W*dpr); tl.height = Math.round(H*dpr);
+  }
+  tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  tctx.clearRect(0, 0, W, H);
+  tctx.fillStyle = "#191919"; tctx.fillRect(0, 0, W, H);
+  tctx.fillStyle = "#1f1f1f"; tctx.fillRect(0, 0, W, rulerH);
+  tctx.fillStyle = "#242424"; tctx.fillRect(0, 0, labelW, H);
+
+  const contentH = H - SB_H;
+
+  tctx.save();
+  tctx.beginPath(); tctx.rect(labelW, 0, W - labelW, contentH); tctx.clip();
+
+  const showSixteenth = pxPerBeat > 26;
+  const b0 = Math.max(0, Math.floor(S.scrollBeat * 4) / 4 - 0.25);
+  const b1 = Math.min(totalBeats, S.scrollBeat + S.visibleBeats + 1);
+  for (let b = b0; b <= b1 + 1e-6; b += 0.25){
+    const x = xOf(b);
+    const isBar = Math.abs(b % S.sig) < 1e-6;
+    const isBeat = Math.abs(b % 1) < 1e-6;
+    if (!isBeat && !showSixteenth) continue;
+    tctx.strokeStyle = isBar ? "#3f3f3f" : (isBeat ? "#2b2b2b" : "#232323");
+    tctx.beginPath();
+    tctx.moveTo(x, isBar ? 0 : rulerH - (isBeat ? 8 : 4));
+    tctx.lineTo(x, contentH);
+    tctx.stroke();
+    if (isBar){
+      tctx.fillStyle = "#8f8f89";
+      tctx.font = "10px -apple-system,sans-serif";
+      tctx.fillText(String(Math.round(b / S.sig) + 1), x + 3, 12);
+    } else if (isBeat && pxPerBeat >= 30){
+      tctx.fillStyle = "#6d6d67";
+      tctx.font = "9px -apple-system,sans-serif";
+      tctx.fillText(String(Math.round(b % S.sig) + 1), x + 3, 12);
+    }
+  }
+
+  for (const c of S.cues){
+    const x = xOf(c);
+    if (x < labelW - 6 || x > W + 6) continue;
+    tctx.fillStyle = "#F0997B";
+    tctx.beginPath();
+    tctx.moveTo(x, rulerH + 1); tctx.lineTo(x - 4, rulerH - 6); tctx.lineTo(x + 4, rulerH - 6);
+    tctx.closePath(); tctx.fill();
+  }
+
+  tlRows.forEach(({ p, y }) => {
+    if (y + rowH < rulerH || y > contentH) return;
+    if (S.selected === p){
+      tctx.fillStyle = "rgba(93,202,165,.07)";
+      tctx.fillRect(labelW, y, W - labelW, rowH);
+    }
+    tctx.strokeStyle = "#242424";
+    tctx.beginPath(); tctx.moveTo(labelW, y + rowH); tctx.lineTo(W, y + rowH); tctx.stroke();
+
+    const cy = y + rowH/2;
+
+    for (const c of S.clips.filter(c => c.partId === p.id)){
+      const a = ACTION_LIB.find(x => x.id === c.actionId);
+      const x1 = xOf(c.start), x2 = xOf(c.start + c.dur);
+      if (x2 < labelW || x1 > W) continue;
+      const bw = Math.max(8, x2 - x1);
+      const bh = Math.min(rowH - 5, 18);
+      const by = cy - bh/2;
+      const sel = S.selClips.indexOf(c) >= 0;
+      const cat = a ? a.cat : "基础";
+      const fill = cat === "情绪" ? "#5d3a52" : cat === "卡点" ? "#54471f" : "#24503f";
+      const edge = cat === "情绪" ? "#c78bb0" : cat === "卡点" ? "#c9a75a" : "#5DCAA5";
+      tctx.save();
+      tctx.fillStyle = fill;
+      roundRect(tctx, x1, by, bw, bh, 3); tctx.fill();
+      tctx.strokeStyle = sel ? "#ffffff" : edge;
+      tctx.lineWidth = sel ? 1.5 : 0.8;
+      roundRect(tctx, x1, by, bw, bh, 3); tctx.stroke();
+      tctx.beginPath(); tctx.rect(x1 + 2, by, bw - 4, bh); tctx.clip();
+      tctx.fillStyle = "#dcefe6";
+      tctx.font = "9px -apple-system,sans-serif";
+      tctx.fillText(a ? a.name : "", x1 + 5, cy + 3);
+      tctx.restore();
+      if (sel){
+        tctx.fillStyle = "#ffffff";
+        tctx.fillRect(x2 - 2.5, by + 2, 2, bh - 4);
+      }
+    }
+
+    for (const k of p.keys){
+      const x = xOf(k.t);
+      if (x < labelW - 8 || x > W + 8) continue;
+      const sel = S.selKeys.some(s => s.key === k);
+      tctx.save();
+      tctx.translate(x, cy);
+      tctx.rotate(Math.PI/4);
+      tctx.fillStyle = sel ? "#ffffff" : (S.selected === p ? "#5DCAA5" : "#4d7f6f");
+      const sz = rowH > 15 ? 9 : 6;
+      tctx.fillRect(-sz/2, -sz/2, sz, sz);
+      tctx.restore();
+    }
+  });
+
+  const px = xOf(S.beat);
+  if (px >= labelW - 1 && px <= W + 1){
+    tctx.strokeStyle = "#f0f0ea";
+    tctx.lineWidth = 1;
+    tctx.beginPath(); tctx.moveTo(px, 0); tctx.lineTo(px, contentH); tctx.stroke();
+    tctx.fillStyle = "#f0f0ea";
+    tctx.beginPath();
+    tctx.moveTo(px - 5, 0); tctx.lineTo(px + 5, 0); tctx.lineTo(px, 8);
+    tctx.closePath(); tctx.fill();
+  }
+  tctx.restore();
+
+  tctx.save();
+  tctx.beginPath(); tctx.rect(0, rulerH, labelW - 3, contentH - rulerH); tctx.clip();
+  tlRows.forEach(({ p, y }) => {
+    if (y + rowH < rulerH || y > contentH) return;
+    tctx.fillStyle = S.selected === p ? "#dcdcd6" : (p.visible ? "#8d8d88" : "#4e4e4a");
+    tctx.font = "10px -apple-system,sans-serif";
+    tctx.fillText(p.slot, 10, y + rowH/2 + 3.5);
+  });
+  tctx.restore();
+
+  if (S.marquee){
+    const m = S.marquee;
+    const x = Math.min(m.x1, m.x2), y = Math.min(m.y1, m.y2);
+    const w = Math.abs(m.x2 - m.x1), h = Math.abs(m.y2 - m.y1);
+    tctx.save();
+    tctx.fillStyle = "rgba(93,202,165,.12)";
+    tctx.strokeStyle = "rgba(93,202,165,.75)";
+    tctx.lineWidth = 1;
+    tctx.fillRect(x, y, w, h);
+    tctx.strokeRect(x + .5, y + .5, w, h);
+    tctx.restore();
+  }
+
+  const trackY = H - SB_H + 2, trackH = 5;
+  const tx0 = labelW + 2, tx1 = W - 10;
+  const trackW = Math.max(20, tx1 - tx0);
+  const vis = Math.min(1, S.visibleBeats / totalBeats);
+  const thumbW = Math.max(28, trackW * vis);
+  const tpos = S.maxScrollBeat > 0 ? S.scrollBeat / S.maxScrollBeat : 0;
+  const thumbX = tx0 + tpos * (trackW - thumbW);
+  tctx.fillStyle = "rgba(255,255,255,.05)";
+  roundRect(tctx, tx0, trackY, trackW, trackH, 3); tctx.fill();
+  tctx.fillStyle = S.maxScrollBeat > 0.5 ? "#4d6b60" : "#333";
+  roundRect(tctx, thumbX, trackY, thumbW, trackH, 3); tctx.fill();
+  S.hsThumb = { x: thumbX, y: trackY, w: thumbW, h: trackH, tx0, trackW };
+
+  if (S.maxRowScroll > 0.5){
+    const vx = W - 6, vy0 = rulerH + 2, vy1 = contentH - 3;
+    const span = Math.max(10, vy1 - vy0);
+    const vh = Math.max(16, span * (S.availH / (S.availH + S.maxRowScroll)));
+    const vt = S.scrollRow / S.maxRowScroll;
+    const vyy = vy0 + vt * (span - vh);
+    tctx.fillStyle = "rgba(255,255,255,.05)";
+    roundRect(tctx, vx, vy0, 4, span, 2); tctx.fill();
+    tctx.fillStyle = "#4a4a46";
+    roundRect(tctx, vx, vyy, 4, vh, 2); tctx.fill();
+    S.vsThumb = { x: vx, y: vyy, w: 4, h: vh, y0: vy0, span };
+  } else {
+    S.vsThumb = null;
+  }
+
+  drawPianoRoll();
+}
+
+/* ============================ 播放 ============================ */
+let playStartBeat = 0, playStartT = 0;
+
+function currentBeat(){
+  if (!S.playing) return S.beat;
+  if (S.audio) return Math.max(0, (S.audio.currentTime + S.audioOffset) * S.bpm / 60);
+  return playStartBeat + (performance.now() - playStartT) / 1000 * S.bpm / 60;
+}
+function play(){
+  if (S.playing) return;
+  S.playing = true; playStartBeat = S.beat; playStartT = performance.now();
+  if (S.audio){
+    const at = S.beat * 60 / S.bpm - S.audioOffset;
+    try { S.audio.currentTime = Math.max(0, at); } catch(e){}
+    S.audio.play().catch(() => {});
+  }
+  document.getElementById("btnPlay").textContent = "⏸";
+}
+function stop(){
+  S.playing = false;
+  S.beat = currentBeat();
+  if (S.audio) S.audio.pause();
+  document.getElementById("btnPlay").textContent = "▶";
+  applyAt(S.beat); draw(); drawTimeline(); updateTime();
+  if (S.selected && S.tab === "props") syncNums(S.selected);
+}
+function togglePlay(){ S.playing ? stop() : play(); }
+function setBeat(b){
+  S.beat = Math.max(0, b);
+  if (S.beat < S.scrollBeat || S.beat > S.scrollBeat + S.visibleBeats * 0.95){
+    S.scrollBeat = clamp(S.beat - S.visibleBeats * 0.15, 0, S.maxScrollBeat);
+  }
+  applyAt(S.beat); draw(); drawTimeline(); updateTime();
+}
+
+function followPlayhead(){
+  if (!S.playing) return;
+  const right = S.scrollBeat + S.visibleBeats * 0.9;
+  if (S.beat > right || S.beat < S.scrollBeat){
+    S.scrollBeat = Math.max(0, S.beat - S.visibleBeats * 0.15);
+  }
+}
+
+function updateTime(){
+  const sec = S.beat * 60 / S.bpm;
+  const dur = S.audio ? S.audioDur : (totalBeats * 60 / S.bpm);
+  document.getElementById("timeLabel").innerHTML =
+    sec.toFixed(2) + "s <em>/ " + dur.toFixed(2) + "s</em>";
+}
+
+function loop(){
+  if (S.playing){
+    S.beat = currentBeat();
+    followPlayhead();
+    applyAt(S.beat);
+    draw(); drawTimeline(); updateTime();
+    if (S.selected && S.tab === "props") syncNums(S.selected);
+    if (S.audio && S.audio.ended) stop();
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ============================ 图层列表 ============================ */
+function renderLayers(){
+  const box = document.getElementById("layerList");
+  box.innerHTML = "";
+  const mode = S.layerTab || "flat";
+  document.getElementById("layerCount").textContent = S.parts.length + " 层";
+  document.querySelectorAll("#layerTabs .ltab").forEach(t => t.classList.toggle("on", t.dataset.ltab === mode));
+
+  const kidsOf = id => S.parts.filter(p => p.parentId === id);
+  const roots = S.parts.filter(p => !p.parentId).slice().reverse();
+
+  const buildRow = (p, depth, flat) => {
+    const kids = kidsOf(p.id);
+    const hasKids = kids.length > 0;
+    const expanded = S.expanded[p.id] !== false;
+
+    const el = document.createElement("div");
+    el.className = "layer" + (S.selected === p ? " sel" : "") + (!flat && hasKids ? " folder" : "") + (!flat && depth > 0 ? " child" : "");
+    el.draggable = true;
+    el.dataset.id = p.id;
+    el.style.paddingLeft = (7 + (flat ? 0 : depth * 13)) + "px";
+    const parName = p.parentId ? (S.parts.find(q => q.id === p.parentId) || {}).slot : null;
+    if (parName) el.title = "父级：" + parName + (flat ? "（拖到别的图层上可改顺序，Alt+拖 改父级）" : "");
+
+    const chev = document.createElement("div");
+    chev.className = (!flat && hasKids) ? "chev" : "chev-space";
+    if (hasKids){
+      chev.textContent = expanded ? "▾" : "▸";
+      chev.onclick = ev => { ev.stopPropagation(); S.expanded[p.id] = !expanded; renderLayers(); };
+    }
+    el.appendChild(chev);
+
+    const th = document.createElement("div");
+    th.className = "thumb";
+    const it = p.variants[0];
+    if (it) th.innerHTML = '<img src="' + it.thumb + '">';
+
+    const nm = document.createElement("div");
+    nm.className = "lname";
+    nm.textContent = p.slot;
+
+    const eye = document.createElement("div");
+    eye.className = "tog" + (p.visible ? "" : " off");
+    eye.innerHTML = p.visible
+      ? '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 6s2-3.4 5-3.4S11 6 11 6s-2 3.4-5 3.4S1 6 1 6z" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="6" cy="6" r="1.5" fill="currentColor"/></svg>'
+      : '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 6s2-3.4 5-3.4S11 6 11 6s-2 3.4-5 3.4S1 6 1 6z" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/><path d="M2 10L10 2" stroke="currentColor" stroke-width="1"/></svg>';
+    eye.title = "显示 / 隐藏";
+    eye.onclick = e => { e.stopPropagation(); pushUndo(); p.visible = !p.visible; renderAll(); };
+
+    const lock = document.createElement("div");
+    lock.className = "tog" + (p.locked ? "" : " off");
+    lock.innerHTML = p.locked
+      ? '<svg width="11" height="11" viewBox="0 0 12 12"><rect x="2.5" y="5.5" width="7" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M4 5.5V4a2 2 0 014 0v1.5" fill="none" stroke="currentColor" stroke-width="1"/></svg>'
+      : '<svg width="11" height="11" viewBox="0 0 12 12"><rect x="2.5" y="5.5" width="7" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><path d="M4 5.5V4a2 2 0 013.4-1.5" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
+    lock.title = "锁定 / 解锁";
+    lock.onclick = e => { e.stopPropagation(); pushUndo(); p.locked = !p.locked; renderAll(); };
+
+    el.append(th);
+    if (flat && p.parentId){
+      const pin = document.createElement("span");
+      pin.className = "pin";
+      pin.textContent = "⤷";
+      pin.title = "子图层，父级：" + (parName || "");
+      el.appendChild(pin);
+    }
+    el.append(nm);
+    if (p.variants.length > 1){
+      const b = document.createElement("span");
+      b.className = "badge";
+      b.textContent = p.variants.length;
+      el.appendChild(b);
+    }
+    if (hasKids){
+      const b2 = document.createElement("span");
+      b2.className = "badge";
+      b2.textContent = kids.length;
+      b2.title = "子图层数量";
+      el.appendChild(b2);
+    }
+    el.append(eye, lock);
+
+    el.onclick = () => selectPart(p);
+    el.ondblclick = () => {
+      const inp = document.createElement("input");
+      inp.value = p.slot;
+      nm.innerHTML = ""; nm.appendChild(inp);
+      inp.focus(); inp.select();
+      const commit = () => { p.slot = inp.value.trim() || p.slot; renderAll(); };
+      inp.onblur = commit;
+      inp.onkeydown = ev => { if (ev.key === "Enter") inp.blur(); if (ev.key === "Escape") renderAll(); };
+    };
+
+    el.ondragstart = e => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", p.id); el.classList.add("dragging"); };
+    el.ondragend = () => el.classList.remove("dragging");
+    el.ondragover = e => { e.preventDefault(); el.classList.add("drop-top"); };
+    el.ondragleave = () => el.classList.remove("drop-top");
+    el.ondrop = e => {
+      e.preventDefault();
+      el.classList.remove("drop-top");
+      const from = e.dataTransfer.getData("text/plain");
+      if (!from || from === p.id) return;
+      if (e.altKey){ reparent(from, p.id); return; }
+      reorderLayer(from, p.id);
+    };
+
+    box.appendChild(el);
+    if (!flat && hasKids && expanded) kids.slice().reverse().forEach(k => buildRow(k, depth + 1, false));
+  };
+
+  if (mode === "flat"){
+    S.parts.slice().reverse().forEach(p => buildRow(p, 0, true));
+    if (!S.parts.length) box.innerHTML = '<div class="lempty">还没有图层<br>把分层 PNG 拖进画布</div>';
+  } else {
+    roots.forEach(p => buildRow(p, 0, false));
+    if (!S.parts.length) box.innerHTML = '<div class="lempty">还没有图层</div>';
+  }
+}
+
+/* 图层 / 父子级 分页切换 */
+document.querySelectorAll("#layerTabs .ltab").forEach(t => {
+  t.onclick = () => {
+    S.layerTab = t.dataset.ltab;
+    renderLayers();
+  };
+});
+
+function setParent(childId, parentId){
+  const child = S.parts.find(p => p.id === childId);
+  if (!child) return false;
+  parentId = parentId || null;
+  if (parentId === child.id){ toast("不能把自己设为父级"); return false; }
+
+  if (parentId){
+    const parent = S.parts.find(p => p.id === parentId);
+    if (!parent){ toast("找不到父级图层"); return false; }
+    let q = parent;
+    while (q){
+      if (q.id === childId){ toast("不能形成循环层级"); return false; }
+      q = q.parentId ? S.parts.find(x => x.id === q.parentId) : null;
+    }
+  }
+
+  pushUndo();
+  const cm = worldOf(child);
+  const pm = parentId ? worldOf(S.parts.find(p => p.id === parentId)) : rootMatrix();
+  const det = pm.a * pm.d - pm.b * pm.c || 1e-6;
+  const ia = pm.d / det, ib = -pm.b / det, ic = -pm.c / det, id = pm.a / det;
+  const dx = cm.e - pm.e, dy = cm.f - pm.f;
+  child.x = ia * dx + ic * dy;
+  child.y = ib * dx + id * dy;
+
+  child.parentId = parentId;
+  if (parentId) S.expanded[parentId] = true;
+  renderAll();
+
+  const pn = parentId ? S.parts.find(p => p.id === parentId) : null;
+  toast(pn ? "「" + child.slot + "」已放入「" + pn.slot + "」" : "「" + child.slot + "」已移出父级");
+  return true;
+}
+
+function reparent(childId, parentId){ setParent(childId, parentId); }
+
+function reorderLayer(fromId, toId){
+  pushUndo();
+  const from = S.parts.findIndex(p => p.id === fromId);
+  const to = S.parts.findIndex(p => p.id === toId);
+  if (from < 0 || to < 0) return;
+  const [item] = S.parts.splice(from, 1);
+  const idx = S.parts.findIndex(p => p.id === toId);
+  S.parts.splice(idx + 1, 0, item);
+  renderAll();
+}
+
+function ancestorFlip(p){
+  let q = p.parentId ? S.parts.find(x => x.id === p.parentId) : null;
+  let n = 0;
+  while (q && n++ < 40){
+    if (q.flipX || q.flipY) return true;
+    q = q.parentId ? S.parts.find(x => x.id === q.parentId) : null;
+  }
+  return false;
+}
+
+function deleteVariant(p, i){
+  if (!p) return;
+  if (p.variants.length <= 1){ toast("至少要保留一张贴图"); return; }
+  const name = p.variants[i] ? (p.variants[i].variant || "贴图 " + (i + 1)) : "";
+  pushUndo();
+  p.variants.splice(i, 1);
+  if (p.texIndex >= p.variants.length) p.texIndex = p.variants.length - 1;
+  else if (p.texIndex > i) p.texIndex--;
+  applyPivot(p);
+  for (const k of p.keys){
+    if (k.tex !== undefined) k.tex = clamp(k.tex, 0, p.variants.length - 1);
+  }
+  touch(p);
+  renderAll();
+  toast("已删除贴图「" + name + "」，剩 " + p.variants.length + " 张");
+}
+
+/* ============================ 发丝摆动 ============================ */
+const HAIR_DEFAULT = { damp: 0.86, gain: 0.85, max: 35, wind: 6, freq: 0.35, windOn: false, mesh: false, segs: 8 };
+
+function partDepth(p){
+  let d = 0, q = p;
+  while (q && q.parentId && d < 50){
+    q = S.parts.find(x => x.id === q.parentId);
+    d++;
+  }
+  return d;
+}
+
+function hairTree(root){
+  const out = [root];
+  let grew = true;
+  while (grew){
+    grew = false;
+    for (const p of S.parts){
+      if (out.indexOf(p) >= 0) continue;
+      if (p.parentId && out.some(q => q.id === p.parentId)){ out.push(p); grew = true; }
+    }
+  }
+  return out.sort((a, b) => partDepth(a) - partDepth(b));
+}
+
+function bakeHairSway(root){
+  if (!root) return;
+  const list = hairTree(root).filter(p => p.parentId);
+  if (!list.length){ toast("发丝要挂在父级图层下才能摆动"); return; }
+
+  pushUndo();
+  const fps = 24;
+  const stepBeat = S.bpm / 60 / fps;
+  const end = Math.max(projectEndBeat(), S.beat + 1);
+  const n = Math.max(3, Math.ceil(end / stepBeat) + 1);
+  let total = 0, skipped = 0, anyMesh = false;
+
+  for (const p of list){
+    if (S.clips.some(c => c.partId === p.id)){ skipped++; continue; }
+    const sp = Object.assign({}, HAIR_DEFAULT, p.spring || {});
+    p.spring = sp;
+    const par = p.parentId ? S.parts.find(q => q.id === p.parentId) : null;
+
+    // ① 采样：父级世界角 + 自身原始姿态（此时 p 的旧关键帧还在）
+    const samples = [];
+    for (let i = 0; i < n; i++){
+      const beat = i * stepBeat;
+      applyAt(beat);
+      const pm = par ? worldOf(par) : rootMatrix();
+      samples.push({ beat, prot: Math.atan2(pm.b, pm.a), px: pm.e, py: pm.f, snap: keySnapshot(p, beat) });
+    }
+
+    // ② 模拟
+    const maxRad = sp.max * Math.PI / 180;
+    const windRad = (sp.windOn ? sp.wind : 0) * Math.PI / 180;
+    const phase = partDepth(p) * 0.8;
+    const useMesh = !!(p.mesh && p.mesh.on && p.bend && p.bend.length);
+    if (useMesh) anyMesh = true;
+    const segs = useMesh ? Math.max(2, Math.min(500, p.mesh.segs || 32)) : 1;
+    const N = samples.length;
+
+    // 发丝在世界里的长度，用来把「位移」换算成「角度」
+    const pm0 = par ? worldOf(par) : rootMatrix();
+    const hairLen = Math.max(8, p.variants[p.texIndex].bbox.h * Math.hypot(pm0.a, pm0.b) * p.sy);
+
+    // 驱动信号 = 父级转角差（取反，落后）+ 父级水平位移 / 发丝长度
+    const drives = new Array(N).fill(0);
+    let prev = samples[0].prot, ppx = samples[0].px, ppy = samples[0].py;
+    for (let i = 0; i < N; i++){
+      const sm = samples[i];
+      let d = sm.prot - prev;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      prev = sm.prot;
+      const dxW = sm.px - ppx, dyW = sm.py - ppy;
+      ppx = sm.px; ppy = sm.py;
+      const ca = Math.cos(-sm.prot), sa = Math.sin(-sm.prot);
+      const localDx = dxW * ca - dyW * sa;
+      drives[i] = (-d + localDx / hairLen) * sp.gain;
+    }
+
+    // 根部响应（一阶低通）
+    const resp = new Array(N).fill(0);
+    let lg = 0;
+    for (let i = 0; i < N; i++){ lg = lg * sp.damp + drives[i]; resp[i] = lg; }
+    const sampleAt = fi => {
+      const i0 = Math.max(0, Math.min(N - 1, Math.floor(fi)));
+      const i1 = Math.min(N - 1, i0 + 1);
+      const fr = Math.max(0, Math.min(1, fi - i0));
+      return resp[i0] * (1 - fr) + resp[i1] * fr;
+    };
+    const windAt = beat => windRad * Math.sin(2 * Math.PI * sp.freq * (beat * 60 / S.bpm) + phase);
+
+    const keys = [];
+    if (useMesh){
+      // 权重：梢部略多分一点，总和归一化 → 总弯曲角与段数无关
+      const wt = new Array(segs);
+      let wsum = 0;
+      for (let k = 0; k < segs; k++){ wt[k] = 1 + 0.6 * (k / segs); wsum += wt[k]; }
+      for (let k = 0; k < segs; k++) wt[k] /= wsum;
+
+      // 波沿发丝往下传：第 k 段取「根部响应」延迟一点点的值
+      const delayFrames = 0.28 * fps;
+      const clampT = v => Math.max(-maxRad, Math.min(maxRad, v));
+      for (let i = 0; i < N; i++){
+        const sm = samples[i];
+        const kk = Object.assign({}, sm.snap);
+        kk.t = sm.beat;
+        const w = windAt(sm.beat);
+        const bend = new Array(segs);
+        for (let k = 0; k < segs; k++){
+          const off = delayFrames * (k + 1) / segs;
+          bend[k] = clampT(sampleAt(i - off) + w * (0.3 + 0.7 * k / segs)) * wt[k];
+        }
+        kk.bend = bend;
+        keys.push(kk);
+      }
+    } else {
+      for (let i = 0; i < N; i++){
+        const sm = samples[i];
+        const kk = Object.assign({}, sm.snap);
+        kk.t = sm.beat;
+        kk.rot = sm.snap.rot + Math.max(-maxRad, Math.min(maxRad, resp[i])) + windAt(sm.beat);
+        keys.push(kk);
+      }
+    }
+    p.keys = keys;
+    total += keys.length;
+  }
+
+  applyAt(S.beat); draw(); drawTimeline(); renderInspector();
+  toast((anyMesh ? "已生成形变：" : "已生成摆动：") + (list.length - skipped) + " 段、" + total + " 帧" +
+        (skipped ? "（跳过 " + skipped + " 个有动作片段的图层）" : ""));
+}
+
+function flipPart(p, axis){
+  if (!p) return;
+  pushUndo();
+  const clip = activeClipFor(p, S.beat);
+  if (clip){                       // 播放头在片段里 → 改片段自己的镜像
+    if (axis === "x") clip.flipX = !clip.flipX;
+    else clip.flipY = !clip.flipY;
+    p.flipX = !!clip.flipX; p.flipY = !!clip.flipY;
+    draw(); drawTimeline(); renderInspector();
+    const on = axis === "x" ? clip.flipX : clip.flipY;
+    toast("片段「" + p.slot + "」" + (on ? "已" : "取消") + (axis === "x" ? "水平" : "垂直") + "镜像");
+    return;
+  }
+  if (axis === "x") p.flipX = !p.flipX;
+  else p.flipY = !p.flipY;
+  // 有动画的图层必须落帧，否则下一次 applyAt 会把镜像回滚掉
+  if (S.record || p.keys.length) touchForce(p);
+  draw(); drawTimeline(); renderInspector();
+  const on = axis === "x" ? p.flipX : p.flipY;
+  toast("「" + p.slot + "」" + (on ? "已" : "取消") + (axis === "x" ? "水平" : "垂直") + "镜像");
+}
+
+function mirrorSelection(axis){
+  const keys = [];
+  if (S.selKeys && S.selKeys.length) keys.push(...S.selKeys);
+  else if (S.selKey){
+    const p = S.parts.find(x => x.id === S.selKey.partId);
+    const k = p && p.keys.find(x => Math.abs(x.t - S.selKey.t) < 1e-3);
+    if (k) keys.push({ partId: p.id, key: k });
+  }
+  const clips = (S.selClips || []).slice();
+  if (!keys.length && !clips.length){ toast("先在时间轴上选中关键帧或片段"); return; }
+
+  pushUndo();
+  for (const it of keys){
+    const k = it.key;
+    if (!k) continue;
+    if (axis === "x") k.flipX = !k.flipX;
+    else k.flipY = !k.flipY;
+  }
+  for (const c of clips){
+    if (axis === "x") c.flipX = !c.flipX;
+    else c.flipY = !c.flipY;
+  }
+  applyAt(S.beat); draw(); drawTimeline(); renderInspector();
+  const bits = [];
+  if (keys.length) bits.push(keys.length + " 个关键帧");
+  if (clips.length) bits.push(clips.length + " 个片段");
+  toast("已镜像 " + bits.join("、") + "（" + (axis === "x" ? "水平" : "垂直") + "）");
+}
+
+function isRootPart(p){
+  return !p.parentId || !S.parts.some(q => q.id === p.parentId);
+}
+
+function resizeDoc(nw, nh, scaleContent){
+  nw = Math.max(16, Math.round(nw || S.doc.w));
+  nh = Math.max(16, Math.round(nh || S.doc.h));
+  const ow = S.doc.w || nw, oh = S.doc.h || nh;
+  if (scaleContent && S.parts.length && ow > 0 && oh > 0 && (ow !== nw || oh !== nh)){
+    const kx = nw/ow, ky = nh/oh;
+    // 只改一边 → 按改的那一边缩放；两边都改 → 取较小值，保证内容装得下
+    let k;
+    if (Math.abs(kx - 1) < 1e-6) k = ky;
+    else if (Math.abs(ky - 1) < 1e-6) k = kx;
+    else k = Math.min(kx, ky);
+    const offX = (nw - ow*k)/2, offY = (nh - oh*k)/2;
+    for (const p of S.parts){
+      if (!isRootPart(p)) continue;   // 子级跟着父级矩阵自动缩放
+      p.x = p.x*k + offX; p.y = p.y*k + offY;
+      p.sx *= k; p.sy *= k;
+      for (const key of p.keys){
+        key.x = key.x*k + offX; key.y = key.y*k + offY;
+        key.sx *= k; key.sy *= k;
+      }
+    }
+    for (const c of S.clips){
+      const part = S.parts.find(q => q.id === c.partId);
+      if (!part || !isRootPart(part)) continue;
+      c.base.x = c.base.x*k + offX; c.base.y = c.base.y*k + offY;
+      c.base.sx *= k; c.base.sy *= k;
+    }
+  }
+  S.doc = { w: nw, h: nh };
+}
+
+function selectPart(p){
+  if (S.selected !== p){ S.selected = p; clearSel(); }
+  renderAll();
+}
+
+/* ============================ 检查器 ============================ */
+function renderInspector(){
+  const box = document.getElementById("inspBody");
+  box.scrollTop = 0;
+  if (S.tab === "props") renderProps(box);
+  else if (S.tab === "curve") renderCurve(box);
+  else if (S.tab === "action") renderActions(box);
+  else renderScene(box);
+}
+
+function renderProps(box){
+  const p = S.selected;
+  if (!p){
+    box.innerHTML = '<div class="sec">未选中图层</div><div style="padding:0 10px 10px;color:var(--dim);line-height:1.7">在左侧选择图层，或在画布上点选部件。</div>';
+    return;
+  }
+  const parentOpts = ['<option value="">（无父级）</option>'].concat(
+    S.parts.filter(q => q.id !== p.id).map(q =>
+      '<option value="' + q.id + '"' + (p.parentId === q.id ? " selected" : "") + '>' + q.slot + '</option>')
+  ).join("");
+
+  const sp = Object.assign({}, HAIR_DEFAULT, p.spring || {});
+  const variants = p.variants.map((v, i) =>
+    '<div class="vitem' + (i === p.texIndex ? " on" : "") + '" data-i="' + i + '">' +
+      '<img src="' + v.thumb + '">' +
+      (v.variant ? '<span class="vname">' + v.variant + '</span>' : "") +
+      (p.variants.length > 1 ? '<span class="vdel" data-del="' + i + '" title="删除这张贴图">×</span>' : "") +
+    '</div>').join("");
+
+  box.innerHTML =
+    '<div class="sec">图层</div>' +
+    '<div class="row"><label>名称</label><input id="fName" type="text" value="' + esc(p.slot) + '"></div>' +
+    '<div class="row"><label>父级</label><select id="fParent">' + parentOpts + '</select></div>' +
+    '<div class="sec">贴图（' + p.variants.length + '）</div>' +
+    '<div class="variants">' + variants + '<div class="vitem add" id="vAdd">＋</div></div>' +
+    '<div class="sec">变换</div>' +
+    '<div class="row"><label>X</label><input id="fX" type="number" value="' + Math.round(p.x) + '"><label>Y</label><input id="fY" type="number" value="' + Math.round(p.y) + '"></div>' +
+    '<div class="row"><label>旋转</label><input id="fRot" type="range" min="-180" max="180" step="1" value="' + Math.round(p.rot*180/Math.PI) + '"><span class="val" id="vRot">' + Math.round(p.rot*180/Math.PI) + '°</span></div>' +
+    '<div class="row"><label>缩放X</label><input id="fSx" type="range" min="10" max="300" step="1" value="' + Math.round(p.sx*100) + '"><span class="val" id="vSx">' + Math.round(p.sx*100) + '%</span></div>' +
+    '<div class="row"><label>缩放Y</label><input id="fSy" type="range" min="10" max="300" step="1" value="' + Math.round(p.sy*100) + '"><span class="val" id="vSy">' + Math.round(p.sy*100) + '%</span></div>' +
+    '<div class="row"><button id="btnLink" class="mini" style="flex:none">' + (S.linkScale ? "已链接" : "独立") + '</button><button id="btnResetScale" class="mini" style="flex:1">重置缩放</button></div>' +
+    '<div class="row"><button id="btnFlipH" class="mini' + (p.flipX ? " on" : "") + '" style="flex:1" title="快捷键 H">⇋ 水平镜像</button><button id="btnFlipV" class="mini' + (p.flipY ? " on" : "") + '" style="flex:1" title="快捷键 V">⇅ 垂直镜像</button></div>' +
+    (ancestorFlip(p) ? '<div style="padding:0 10px 8px;color:#F0997B;font-size:10.5px;line-height:1.5">父级已镜像，本层会跟着翻转</div>' : '') +
+    '<div class="row"><label>透明</label><input id="fAlpha" type="range" min="0" max="100" step="1" value="' + Math.round(p.alpha*100) + '"><span class="val" id="vAlpha">' + Math.round(p.alpha*100) + '%</span></div>' +
+    '<div class="sec">发丝摆动</div>' +
+    (p.parentId ? "" : '<div style="padding:0 10px 4px;color:var(--dim);font-size:10.5px">挂在父级图层下才有摆动</div>') +
+    '<div class="row"><label>阻尼</label><input id="spDamp" type="range" min="50" max="98" step="1" value="' + Math.round(sp.damp*100) + '"><span class="val" id="vSpDamp">' + Math.round(sp.damp*100) + '%</span></div>' +
+    '<div class="row"><label>跟随</label><input id="spGain" type="range" min="0" max="200" step="5" value="' + Math.round(sp.gain*100) + '"><span class="val" id="vSpGain">' + Math.round(sp.gain*100) + '%</span></div>' +
+    '<div class="row"><label>最大角</label><input id="spMax" type="range" min="5" max="60" step="1" value="' + sp.max + '"><span class="val" id="vSpMax">' + sp.max + '°</span></div>' +
+    '<div class="row"><button id="spWindOn" class="mini' + (sp.windOn ? " on" : "") + '" style="flex:none">随风</button><input id="spWind" type="range" min="0" max="30" step="1" value="' + sp.wind + '"><span class="val" id="vSpWind">' + (sp.windOn ? sp.wind + "°" : "关") + '</span></div>' +
+    '<div class="row"><button id="spMesh" class="mini' + (p.mesh && p.mesh.on ? " on" : "") + '" style="flex:none">网格变形</button><input id="spSegs" type="range" min="3" max="500" step="1" value="' + ((p.mesh && p.mesh.segs) || 32) + '"><span class="val" id="vSpSegs">' + ((p.mesh && p.mesh.segs) || 32) + ' 段</span></div>' +
+    '<div class="row"><button id="btnHairBake" class="mini" style="flex:1">' + (p.mesh && p.mesh.on ? "生成形变关键帧" : "生成摆动关键帧") + '</button><button id="btnHairClear" class="mini" style="flex:none">清除</button></div>' +
+    '<div class="sec">轴心</div>' +
+    '<div class="row"><label>X</label><input id="fPx" type="number" value="' + Math.round(p.ax) + '"><label>Y</label><input id="fPy" type="number" value="' + Math.round(p.ay) + '"></div>' +
+    '<div class="row"><button id="btnPivot" style="flex:1">画布上点选</button><button id="btnPivotCenter" style="flex:1">回到中心</button></div>' +
+    '<div class="sec">关键帧（' + p.keys.length + '）</div>' +
+    clipHint(p) +
+    '<div class="row"><button id="btnClearKeys" style="flex:1">清除关键帧</button></div>' +
+    '<div style="padding:0 10px 10px;color:var(--dim);font-size:10.5px;line-height:1.6">旋转与缩放都围绕轴心进行。底部工具栏的「● 自动记录」是全局开关，开启时改属性会在播放头落关键帧。<br>打包成组件请用底部工具栏的「＋ 存为组件」。</div>';
+
+  const bind = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
+  bind("fName", "change", e => { pushUndo(); p.slot = e.target.value.trim() || p.slot; renderAll(); });
+  bind("fParent", "change", e => { setParent(p.id, e.target.value || null); });
+  bind("fX", "input", e => { beginEdit(); p.x = +e.target.value; touch(p); draw(); });
+  bind("fX", "change", endEdit);
+  bind("fY", "input", e => { beginEdit(); p.y = +e.target.value; touch(p); draw(); });
+  bind("fY", "change", endEdit);
+  bind("fRot", "input", e => {
+    beginEdit(); p.rot = (+e.target.value) * Math.PI/180;
+    document.getElementById("vRot").textContent = e.target.value + "°";
+    touch(p); draw();
+  });
+  bind("fRot", "change", endEdit);
+  bind("fSx", "input", e => {
+    beginEdit(); const v = (+e.target.value)/100;
+    if (S.linkScale){ p.sx = p.sy = v; } else { p.sx = v; }
+    document.getElementById("vSx").textContent = e.target.value + "%";
+    if (S.linkScale) document.getElementById("vSy").textContent = e.target.value + "%";
+    touch(p); draw();
+  });
+  bind("fSx", "change", endEdit);
+  bind("fSy", "input", e => {
+    beginEdit(); const v = (+e.target.value)/100;
+    if (S.linkScale){ p.sx = p.sy = v; } else { p.sy = v; }
+    document.getElementById("vSy").textContent = e.target.value + "%";
+    if (S.linkScale) document.getElementById("vSx").textContent = e.target.value + "%";
+    touch(p); draw();
+  });
+  bind("fSy", "change", endEdit);
+  bind("fAlpha", "input", e => {
+    beginEdit(); p.alpha = (+e.target.value)/100;
+    document.getElementById("vAlpha").textContent = e.target.value + "%";
+    touch(p); draw();
+  });
+  bind("fAlpha", "change", endEdit);
+  bind("fPx", "change", e => {
+    pushUndo();
+    const it = p.variants[p.texIndex] || p.variants[0];
+    setPivot(p, it, +e.target.value, p.ay);
+    touch(p); draw();
+  });
+  bind("fPy", "change", e => {
+    pushUndo();
+    const it = p.variants[p.texIndex] || p.variants[0];
+    setPivot(p, it, p.ax, +e.target.value);
+    touch(p); draw();
+  });
+
+  box.querySelectorAll(".vitem[data-i]").forEach(el => {
+    el.onclick = () => { pushUndo(); p.texIndex = +el.dataset.i; touch(p); renderAll(); };
+  });
+  box.querySelectorAll(".vdel").forEach(el => {
+    el.onclick = ev => { ev.stopPropagation(); deleteVariant(p, +el.dataset.del); };
+  });
+  const add = document.getElementById("vAdd");
+  if (add) add.onclick = () => document.getElementById("texPick").click();
+  const bp = document.getElementById("btnPivot");
+  if (bp){
+    bp.classList.toggle("on", S.pivotMode);
+    bp.textContent = S.pivotMode ? "拖动中 · 点此退出" : "拖动轴心";
+    bp.onclick = () => {
+      S.pivotMode = !S.pivotMode;
+      bp.classList.toggle("on", S.pivotMode);
+      bp.textContent = S.pivotMode ? "拖动中 · 点此退出" : "拖动轴心";
+      view.style.cursor = S.pivotMode ? "crosshair" : "default";
+      draw();
+    };
+  }
+  const bpc = document.getElementById("btnPivotCenter");
+  if (bpc) bpc.onclick = () => {
+    pushUndo();
+    const it = p.variants[p.texIndex] || p.variants[0];
+    setPivot(p, it, it.bbox.x + it.bbox.w/2, it.bbox.y + it.bbox.h/2);
+    touch(p); draw(); renderInspector();
+  };
+  const bl = document.getElementById("btnLink");
+  if (bl) bl.onclick = () => { S.linkScale = !S.linkScale; renderInspector(); };
+  const brs = document.getElementById("btnResetScale");
+  if (brs) brs.onclick = () => { pushUndo(); p.sx = 1; p.sy = 1; touch(p); draw(); renderInspector(); };
+  const spBind = (id, vid, key, unit, div) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.oninput = () => {
+      const v = +el.value;
+      p.spring = Object.assign({}, HAIR_DEFAULT, p.spring || {});
+      p.spring[key] = div ? v / 100 : v;
+      const out = document.getElementById(vid);
+      if (out) out.textContent = (div ? Math.round(v) : v) + unit;
+    };
+  };
+  spBind("spDamp", "vSpDamp", "damp", "%", true);
+  spBind("spGain", "vSpGain", "gain", "%", true);
+  spBind("spMax", "vSpMax", "max", "°", false);
+  spBind("spWind", "vSpWind", "wind", "°", false);
+  const swOn = document.getElementById("spWindOn");
+  if (swOn) swOn.onclick = () => {
+    p.spring = Object.assign({}, HAIR_DEFAULT, p.spring || {});
+    p.spring.windOn = !p.spring.windOn;
+    renderInspector();
+  };
+  const smEl = document.getElementById("spMesh");
+  if (smEl) smEl.onclick = () => {
+    p.spring = Object.assign({}, HAIR_DEFAULT, p.spring || {});
+    p.mesh = p.mesh || { on: false, segs: 32 };
+    p.mesh.on = !p.mesh.on;
+    p.spring.mesh = p.mesh.on;
+    if (p.mesh.on){
+      const n = Math.max(2, Math.min(500, p.mesh.segs || 32));
+      p.mesh.segs = n;
+      if (!p.bend || p.bend.length !== n) p.bend = new Array(n).fill(0);
+    }
+    draw(); renderInspector();
+    toast(p.mesh.on ? "网格变形已开，调好参数后点生成" : "已切回整体摆动");
+  };
+  const segEl = document.getElementById("spSegs");
+  if (segEl) segEl.oninput = () => {
+    const n = +segEl.value;
+    p.mesh = p.mesh || { on: true, segs: n };
+    p.mesh.segs = n;
+    if (!p.bend || p.bend.length !== n) p.bend = new Array(n).fill(0);
+    const out = document.getElementById("vSpSegs");
+    if (out) out.textContent = n + " 段";
+  };
+  const bhBake = document.getElementById("btnHairBake");
+  if (bhBake) bhBake.onclick = () => bakeHairSway(p);
+  const bhClear = document.getElementById("btnHairClear");
+  if (bhClear) bhClear.onclick = () => {
+    pushUndo();
+    p.spring = null;
+    p.keys = [];
+    applyAt(S.beat); draw(); drawTimeline(); renderInspector();
+    toast("已清除「" + p.slot + "」的摆动与关键帧");
+  };
+  const bfh = document.getElementById("btnFlipH");
+  if (bfh) bfh.onclick = () => flipPart(p, "x");
+  const bfv = document.getElementById("btnFlipV");
+  if (bfv) bfv.onclick = () => flipPart(p, "y");
+  const bc = document.getElementById("btnClearKeys");
+  if (bc) bc.onclick = () => { pushUndo(); p.keys = []; clearSel(); draw(); drawTimeline(); renderInspector(); };
+}
+
+function renderCurve(box){
+  const sel = S.selKey;
+  let k = null, part = null;
+  if (sel && sel.key && sel.key.t !== undefined){
+    part = S.parts.find(p => p.id === sel.partId);
+    if (part && part.keys.indexOf(sel.key) >= 0) k = sel.key;
+  }
+  if (!k){
+    const clip = S.selClips.length === 1 ? S.selClips[0] : null;
+    if (clip){
+      const a = ACTION_LIB.find(x => x.id === clip.actionId);
+      const cp = S.parts.find(p => p.id === clip.partId);
+      box.innerHTML =
+        '<div class="sec">选中的是动作片段</div>' +
+        '<div style="padding:0 10px 8px;color:var(--dim);line-height:1.7">「' + esc(a ? a.name : "片段") + '」在 ' +
+          (cp ? esc(cp.slot) : "") + ' 上，' + clip.start.toFixed(2) + ' – ' + (clip.start + clip.dur).toFixed(2) + ' 拍。<br>' +
+          '片段的缓动内置在组件里，没有独立曲线。要调曲线，先把它分解成关键帧。</div>' +
+        '<div class="row"><button id="btnExpandClip" style="flex:1">分解为关键帧后调曲线</button></div>' +
+        '<div style="padding:8px 10px;color:#5f5f5a;font-size:10.5px;line-height:1.6">分解后可逐个关键帧编辑缓动，改完还能再用「＋ 存为组件」打包回去。</div>';
+      const b = document.getElementById("btnExpandClip");
+      if (b) b.onclick = () => { expandClip(clip); renderInspector(); };
+      return;
+    }
+    box.innerHTML = '<div class="sec">缓动曲线</div><div style="padding:0 10px 10px;color:var(--dim);line-height:1.7">在时间轴上点选一个关键帧，即可编辑它到下一个关键帧之间的缓动曲线。</div>';
+    return;
+  }
+  const cur = k.ease && k.ease.p ? k.ease.p : null;
+  box.innerHTML =
+    '<div class="sec">关键帧 ' + k.t.toFixed(2) + ' 拍 · ' + (part ? part.slot : "") + '</div>' +
+    '<div class="ease-grid">' +
+      EASE_PRESETS.map((e, i) => '<button data-i="' + i + '">' + e.name + '</button>').join("") +
+    '</div>' +
+    '<div id="curveBox"><canvas id="curve"></canvas></div>' +
+    '<div style="padding:0 10px 10px;color:var(--dim);font-size:10.5px;line-height:1.6">拖动两个控制点可自定义曲线；纵轴越高的部分速度越快。</div>';
+
+  box.querySelectorAll(".ease-grid button").forEach(b => {
+    b.onclick = () => {
+      pushUndo();
+      const e = EASE_PRESETS[+b.dataset.i];
+      k.ease = { p: e.p ? e.p.slice() : null };
+      applyAt(S.beat); draw(); drawTimeline(); renderInspector();
+    };
+  });
+  drawCurveEditor(k);
+}
+
+function drawCurveEditor(k){
+  const cv = document.getElementById("curve");
+  if (!cv) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth || 240, H = cv.clientHeight || 118;
+  cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+  const g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const pad = 14;
+  const w = W - pad*2, h = H - pad*2;
+  const X = v => pad + v * w;
+  const Y = v => pad + h - v * h;
+
+  g.strokeStyle = "#232323"; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++){
+    g.beginPath(); g.moveTo(X(i/4), pad); g.lineTo(X(i/4), pad + h); g.stroke();
+    g.beginPath(); g.moveTo(pad, Y(i/4)); g.lineTo(pad + w, Y(i/4)); g.stroke();
+  }
+  g.strokeStyle = "#3a3a3a";
+  g.beginPath(); g.moveTo(X(0), Y(0)); g.lineTo(X(1), Y(1)); g.stroke();
+
+  const p = k.ease && k.ease.p ? k.ease.p : null;
+  g.strokeStyle = "#5DCAA5"; g.lineWidth = 1.6;
+  g.beginPath();
+  if (!p){
+    g.moveTo(X(0), Y(0)); g.lineTo(X(1), Y(0)); g.lineTo(X(1), Y(1));
+  } else {
+    for (let i = 0; i <= 40; i++){
+      const x = i / 40;
+      const y = bezierY(x, p);
+      if (i === 0) g.moveTo(X(x), Y(y)); else g.lineTo(X(x), Y(y));
+    }
+  }
+  g.stroke();
+
+  if (p){
+    g.strokeStyle = "#4a7f6f"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(X(0), Y(0)); g.lineTo(X(p[0]), Y(p[1])); g.stroke();
+    g.beginPath(); g.moveTo(X(1), Y(1)); g.lineTo(X(p[2]), Y(p[3])); g.stroke();
+    [[p[0], p[1], "#85B7EB"], [p[2], p[3], "#F0997B"]].forEach(([x, y, c]) => {
+      g.fillStyle = c;
+      g.beginPath(); g.arc(X(x), Y(y), 4.5, 0, Math.PI*2); g.fill();
+    });
+    cv.dataset.p = JSON.stringify(p);
+  }
+
+  bindCurveCanvas(cv);
+}
+
+let curveDrag = null;
+
+function curveGeom(cv){
+  const pad = 14;
+  const W = cv.clientWidth || 240, H = cv.clientHeight || 118;
+  const w = W - pad*2, h = H - pad*2;
+  return { pad, w, h, X: v => pad + v*w, Y: v => pad + h - v*h };
+}
+
+function bindCurveCanvas(cv){
+  cv.onpointerdown = e => {
+    const k = currentCurveKey();
+    if (!k || !k.ease || !k.ease.p) return;
+    const { X, Y } = curveGeom(cv);
+    const r = cv.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    const p = k.ease.p;
+    const d0 = Math.hypot(mx - X(p[0]), my - Y(p[1]));
+    const d1 = Math.hypot(mx - X(p[2]), my - Y(p[3]));
+    curveDrag = d0 < d1 ? 0 : 1;
+    beginEdit();
+    try { cv.setPointerCapture(e.pointerId); } catch(err){}
+    e.preventDefault();
+    cv.onpointermove(e);
+  };
+  cv.onpointermove = e => {
+    if (curveDrag === null) return;
+    const k = currentCurveKey();
+    if (!k || !k.ease || !k.ease.p) return;
+    const { pad, w, h } = curveGeom(cv);
+    const r = cv.getBoundingClientRect();
+    const vx = clamp((e.clientX - r.left - pad) / w, 0, 1);
+    const vy = (pad + h - (e.clientY - r.top)) / h;
+    const p = k.ease.p;
+    if (curveDrag === 0){ p[0] = vx; p[1] = vy; }
+    else { p[2] = vx; p[3] = vy; }
+    applyAt(S.beat); draw(); drawTimeline(); drawCurveEditor(k);
+  };
+  cv.onpointerup = () => {
+    if (curveDrag !== null){ curveDrag = null; endEdit(); }
+  };
+  cv.onpointercancel = () => { curveDrag = null; };
+}
+
+function currentCurveKey(){
+  if (!S.selKey || !S.selKey.key) return null;
+  const part = S.parts.find(p => p.id === S.selKey.partId);
+  if (!part) return null;
+  return part.keys.indexOf(S.selKey.key) >= 0 ? S.selKey.key : null;
+}
+
+const ACTION_LIB = [
+  { id:"nod",    cat:"基础", name:"点头",     ico:"◡",  target:"head", keys:[{t:0,rot:0},{t:.5,rot:-.22},{t:1,rot:0}] },
+  { id:"shake",  cat:"基础", name:"摇头",     ico:"◠",  target:"head", keys:[{t:0,rot:0},{t:.25,rot:.18},{t:.5,rot:-.18},{t:.75,rot:.12},{t:1,rot:0}] },
+  { id:"wave",   cat:"基础", name:"挥手",     ico:"✦",  target:"arm_r", keys:[{t:0,rot:0},{t:.33,rot:-.5},{t:.66,rot:.35},{t:1,rot:-.5},{t:1.33,rot:.35},{t:1.66,rot:-.5},{t:2,rot:0}] },
+  { id:"jump",   cat:"基础", name:"跳一下",   ico:"↑",  target:"body", keys:[{t:0,y:0},{t:.25,y:-60},{t:.5,y:0},{t:.75,y:-18},{t:1,y:0}] },
+  { id:"squat",  cat:"基础", name:"下蹲",     ico:"↓",  target:"body", keys:[{t:0,sy:1,sx:1},{t:.4,sy:.82,sx:1.12},{t:1,sy:1,sx:1}] },
+  { id:"sway",   cat:"基础", name:"左右摇",   ico:"∿",  target:"body", keys:[{t:0,rot:0},{t:.5,rot:.08},{t:1,rot:0},{t:1.5,rot:-.08},{t:2,rot:0}] },
+  { id:"breath", cat:"基础", name:"呼吸",     ico:"○",  target:"body", keys:[{t:0,sy:1},{t:1,sy:1.04},{t:2,sy:1}] },
+  { id:"shock",  cat:"情绪", name:"震惊",     ico:"!",  target:"head", keys:[{t:0,sx:1,sy:1,y:0},{t:.15,sx:1.18,sy:1.18,y:-16},{t:.5,sx:1.1,sy:1.1,y:-10},{t:1,sx:1,sy:1,y:0}] },
+  { id:"laugh",  cat:"情绪", name:"大笑",     ico:"☺",  target:"head", keys:[{t:0,y:0,rot:0},{t:.2,y:-10,rot:-.06},{t:.4,y:0,rot:0},{t:.6,y:-10,rot:.06},{t:.8,y:0,rot:0}] },
+  { id:"tremble",cat:"情绪", name:"颤抖",     ico:"≈",  target:"body", keys:[{t:0,x:0},{t:.1,x:5},{t:.2,x:-5},{t:.3,x:5},{t:.4,x:-5},{t:.5,x:0}] },
+  { id:"spin",   cat:"情绪", name:"转一圈",   ico:"↻",  target:"body", keys:[{t:0,rot:0},{t:1,rot:Math.PI*2}] },
+  { id:"pop",    cat:"卡点", name:"弹一下",   ico:"◆",  target:"body", keys:[{t:0,sx:1,sy:1},{t:.12,sx:1.14,sy:.9},{t:.3,sx:.96,sy:1.05},{t:.5,sx:1,sy:1}] },
+  { id:"fade",   cat:"卡点", name:"闪一下",   ico:"◇",  target:"body", keys:[{t:0,alpha:1},{t:.1,alpha:0},{t:.3,alpha:1}] },
+  { id:"cut",    cat:"卡点", name:"硬切贴图", ico:"▣",  target:"head", keys:[{t:0,tex:1}], instant:true }
+];
+
+function renderActions(box){
+  const cats = ["基础", "情绪", "卡点"];
+  const custom = ACTION_LIB.filter(a => a.custom);
+
+  let html = '<div class="sec">动作库</div>' +
+    '<div style="padding:0 10px 8px;color:var(--dim);font-size:10.5px;line-height:1.6">点击卡片在播放头处放置动作片段，可拖动位置、拖右边缘拉伸时长。</div>';
+
+  html += '<div class="sec">我的组件（' + custom.length + '）</div>';
+  html += '<div style="padding:0 10px 6px"><button id="btnMakeComp" style="width:100%">＋ 把选中关键帧存为组件</button></div>';
+  if (custom.length){
+    html += '<div class="cards">' + custom.map(a =>
+      '<div class="card" data-id="' + a.id + '"><span class="ico">★</span>' + esc(a.name) +
+      '<span class="del" data-del="' + a.id + '">×</span></div>').join("") + '</div>';
+  } else {
+    html += '<div style="padding:0 10px 8px;color:#5f5f5a;font-size:10.5px;line-height:1.6">在时间轴上框选、或按住 Shift 多选关键帧后点上面的按钮；没选关键帧时会用当前图层的全部关键帧。</div>';
+  }
+
+  cats.forEach(c => {
+    html += '<div class="sec">' + c + '</div><div class="cards">';
+    ACTION_LIB.filter(a => a.cat === c && !a.custom).forEach(a => {
+      html += '<div class="card" data-id="' + a.id + '"><span class="ico">' + a.ico + '</span>' + a.name + '</div>';
+    });
+    html += '</div>';
+  });
+
+  box.innerHTML = html;
+
+  box.querySelectorAll(".card").forEach(el => {
+    el.onclick = ev => {
+      const del = ev.target && ev.target.dataset ? ev.target.dataset.del : null;
+      if (del){ ev.stopPropagation(); deleteCustom(del); return; }
+      applyAction(el.dataset.id);
+    };
+  });
+  const mk = document.getElementById("btnMakeComp");
+  if (mk) mk.onclick = makeComponentFromSelection;
+}
+
+/* ---------- 自定义组件 ---------- */
+function makeComponentFromSelection(){
+  let part = null, keys = null;
+
+  if (S.selKeys.length >= 2){
+    const counts = {};
+    S.selKeys.forEach(s => { counts[s.partId] = (counts[s.partId] || 0) + 1; });
+    const partId = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+    part = S.parts.find(p => p.id === partId);
+    keys = S.selKeys.filter(s => s.partId === partId).map(s => s.key).sort((a, b) => a.t - b.t);
+    if (!part || keys.length < 2){ toast("至少选中同一图层的两个关键帧"); return; }
+  } else {
+    part = S.selected;
+    if (!part){ toast("先在左侧选一个图层，或在时间轴上选中关键帧"); return; }
+    if (part.keys.length < 2){
+      toast("「" + part.slot + "」只有 " + part.keys.length + " 个关键帧，至少需要 2 个");
+      return;
+    }
+    keys = part.keys.slice().sort((a, b) => a.t - b.t);
+  }
+
+  const t0 = keys[0].t, k0 = keys[0];
+  const arr = keys.map(k => ({
+    t: +(k.t - t0).toFixed(4),
+    x: +(k.x - k0.x).toFixed(3),
+    y: +(k.y - k0.y).toFixed(3),
+    rot: +(k.rot - k0.rot).toFixed(5),
+    sx: +(k0.sx ? k.sx / k0.sx : 1).toFixed(4),
+    sy: +(k0.sy ? k.sy / k0.sy : 1).toFixed(4),
+    alpha: +(k0.alpha ? k.alpha / k0.alpha : 1).toFixed(4),
+    tex: k.tex
+  }));
+
+  askName("给这个组件起个名字（" + arr.length + " 个关键帧）", part.slot + " 动作", name => {
+    pushUndo();
+    const comp = {
+      id: "u" + Date.now().toString(36),
+      cat: "我的", name, ico: "★", target: "any",
+      rel: true, custom: true, keys: arr
+    };
+    ACTION_LIB.push(comp);
+    saveCustomActions();
+
+    const span = Math.max(0.25, arr[arr.length - 1].t);
+    part.keys = part.keys.filter(k => keys.indexOf(k) < 0);
+    const clip = {
+      id: "c" + (++uid),
+      partId: part.id,
+      actionId: comp.id,
+      start: t0,
+      dur: span,
+      base: { x: k0.x, y: k0.y, rot: k0.rot, sx: k0.sx, sy: k0.sy, alpha: k0.alpha, tex: k0.tex }
+    };
+    S.clips.push(clip);
+    S.selected = part;
+    S.selKeys = []; S.selKey = null;
+    S.selClips = [clip]; S.selectedClip = clip;
+
+    S.tab = "action";
+    document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x.dataset.tab === "action"));
+    applyAt(S.beat);
+    renderAll();
+    toast("已存为组件「" + name + "」，关键帧已替换为片段（右键可分解回来）");
+  });
+}
+
+function clipKeyAbs(clip, a, k){
+  const b = clip.base;
+  const rel = !!a.rel;
+  return {
+    x: b.x + (k.x !== undefined ? k.x : 0),
+    y: b.y + (k.y !== undefined ? k.y : 0),
+    rot: b.rot + (k.rot !== undefined ? k.rot : 0),
+    sx: k.sx !== undefined ? (rel ? b.sx * k.sx : k.sx) : b.sx,
+    sy: k.sy !== undefined ? (rel ? b.sy * k.sy : k.sy) : b.sy,
+    alpha: k.alpha !== undefined ? (rel ? b.alpha * k.alpha : k.alpha) : b.alpha,
+    tex: k.tex !== undefined ? k.tex : b.tex
+  };
+}
+
+function expandClip(clip){
+  if (!clip) return;
+  const a = ACTION_LIB.find(x => x.id === clip.actionId);
+  const part = S.parts.find(p => p.id === clip.partId);
+  if (!a || !part){ toast("找不到对应组件或图层"); return; }
+
+  const span = a.keys[a.keys.length - 1].t || clip.dur;
+  pushUndo();
+  a.keys.forEach(k => {
+    const tt = +(clip.start + (span > 1e-6 ? (k.t / span) * clip.dur : 0)).toFixed(4);
+    const abs = clipKeyAbs(clip, a, k);
+    abs.t = tt;
+    abs.ease = a.instant ? { p: null } : { p: [0.42, 0, 0.58, 1] };
+    part.keys = part.keys.filter(x => Math.abs(x.t - tt) > 1e-3);
+    part.keys.push(abs);
+  });
+  part.keys.sort((x, y) => x.t - y.t);
+  S.clips = S.clips.filter(c => c !== clip);
+  clearSel();
+  S.selected = part;
+  applyAt(S.beat);
+  renderAll();
+  toast("已分解为 " + a.keys.length + " 个关键帧");
+}
+
+function deleteCustom(id){
+  const i = ACTION_LIB.findIndex(a => a.id === id);
+  if (i < 0) return;
+  pushUndo();
+  ACTION_LIB.splice(i, 1);
+  S.clips = S.clips.filter(c => c.actionId !== id);
+  saveCustomActions();
+  clearSel();
+  applyAt(S.beat); renderAll();
+  toast("已删除组件");
+}
+
+function saveCustomActions(){
+  try {
+    localStorage.setItem("rigframe.customActions", JSON.stringify(ACTION_LIB.filter(a => a.custom)));
+  } catch(e){}
+}
+function loadCustomActions(){
+  try {
+    // 兼容旧版键名，改名后用户存过的组件不会丢
+    const raw = localStorage.getItem("rigframe.customActions") || localStorage.getItem("meme.customActions");
+    if (!raw) return;
+    JSON.parse(raw).forEach(a => {
+      if (a && a.id && a.keys && !ACTION_LIB.some(x => x.id === a.id)) ACTION_LIB.push(a);
+    });
+  } catch(e){}
+}
+
+let modalCb = null;
+function askName(title, def, cb){
+  const m = document.getElementById("modal");
+  const inp = document.getElementById("modalInput");
+  document.getElementById("modalTitle").textContent = title;
+  inp.value = def;
+  m.classList.add("show");
+  modalCb = cb;
+  setTimeout(() => { inp.focus(); inp.select(); }, 30);
+}
+function closeModal(ok){
+  const m = document.getElementById("modal");
+  const inp = document.getElementById("modalInput");
+  m.classList.remove("show");
+  const cb = modalCb;
+  modalCb = null;
+  if (ok && cb) cb((inp.value || "").trim() || "未命名");
+}
+document.getElementById("modalOk").onclick = () => closeModal(true);
+document.getElementById("modalCancel").onclick = () => closeModal(false);
+document.getElementById("modalInput").onkeydown = e => {
+  if (e.key === "Enter"){ e.preventDefault(); closeModal(true); }
+  if (e.key === "Escape"){ e.preventDefault(); closeModal(false); }
+};
+
+function findTarget(kind){
+  if (kind === "arm_r") return S.parts.find(p => p.kind === "arm_r") || S.parts.find(p => p.kind === "arm_l") || S.selected;
+  if (kind === "head") return S.parts.find(p => p.kind === "head") || S.selected;
+  if (kind === "body") return S.parts.find(p => p.kind === "body") || S.selected;
+  return S.selected;
+}
+
+function applyAction(id){
+  const a = ACTION_LIB.find(x => x.id === id);
+  if (!a) return;
+  const p = findTarget(a.target);
+  if (!p){ toast("没有可用的目标部件"); return; }
+  pushUndo();
+  const span = a.keys[a.keys.length - 1].t || 0;
+  const clip = {
+    id: "c" + (++uid),
+    partId: p.id,
+    actionId: id,
+    start: S.snap ? Math.round(S.beat * 4) / 4 : S.beat,
+    dur: Math.max(0.5, span || 0.5),
+    flipX: !!p.flipX, flipY: !!p.flipY,
+    base: { x:p.x, y:p.y, rot:p.rot, sx:p.sx, sy:p.sy, alpha:p.alpha, tex:p.texIndex }
+  };
+  S.clips.push(clip);
+  S.selected = p;
+  S.selKeys = []; S.selKey = null;
+  S.selClips = [clip]; S.selectedClip = clip;
+  applyAt(S.beat);
+  renderAll();
+  toast("已放置「" + a.name + "」，可拖动或拉伸");
+}
+
+function renderScene(box){
+  const bg = S.bg;
+  box.innerHTML =
+    '<div class="sec">画布</div>' +
+    '<div class="row"><label>宽</label><input id="dW" type="number" value="' + Math.round(S.doc.w) + '"><label>高</label><input id="dH" type="number" value="' + Math.round(S.doc.h) + '"></div>' +
+    '<div class="row"><button id="btnFitResize" class="mini' + (S.scaleOnResize ? " on" : "") + '" style="flex:1">改尺寸时按比例缩放内容：' + (S.scaleOnResize ? "开" : "关") + '</button></div>' +
+    '<div class="grid2">' +
+      '<button data-size="1080,1920">竖屏 1080×1920</button>' +
+      '<button data-size="1080,1080">方形 1080×1080</button>' +
+      '<button data-size="1920,1080">横屏 1920×1080</button>' +
+      '<button data-size="1000,1000">原始 1000×1000</button>' +
+    '</div>' +
+    '<div class="sec">背景</div>' +
+    '<div class="row"><label>类型</label><select id="bgType">' +
+      '<option value="color"' + (bg.type==="color"?" selected":"") + '>纯色</option>' +
+      '<option value="gradient"' + (bg.type==="gradient"?" selected":"") + '>渐变</option>' +
+      '<option value="image"' + (bg.type==="image"?" selected":"") + '>图片</option>' +
+      '<option value="none"' + (bg.type==="none"?" selected":"") + '>透明</option>' +
+    '</select></div>' +
+    (bg.type === "color"
+      ? '<div class="row"><label>颜色</label><input id="bgColor" type="color" value="' + bg.color + '"><span style="color:var(--dim);font-size:10.5px">' + bg.color + '</span></div>'
+      : "") +
+    (bg.type === "gradient"
+      ? '<div class="row"><label>起点</label><input id="bgC1" type="color" value="' + bg.c1 + '"><label>终点</label><input id="bgC2" type="color" value="' + bg.c2 + '"></div>' +
+        '<div class="row"><label>角度</label><input id="bgAngle" type="range" min="0" max="360" value="' + bg.angle + '"><span class="val" id="vAngle">' + bg.angle + '°</span></div>'
+      : "") +
+    (bg.type === "image"
+      ? '<div class="row"><button id="bgImgBtn" style="flex:1">选择背景图片</button></div>'
+      : "") +
+    '<div class="sec">音频</div>' +
+    '<div class="row"><button id="btnAudio2" style="flex:1">' + (S.audio ? "更换音乐" : "导入音乐") + '</button></div>' +
+    (S.audio
+      ? '<div class="row"><label>偏移</label><input id="audOff" type="range" min="-3000" max="3000" step="10" value="' + Math.round((S.audioOffset || 0) * 1000) + '"><span class="val" id="vAudOff">' + (S.audioOffset || 0).toFixed(2) + 's</span></div>' +
+        '<div class="row"><button id="audOffReset" style="flex:1">偏移归零</button><button id="audOffNudge" style="flex:1">对齐到播放头</button></div>'
+      : "") +
+    '<div style="padding:2px 10px 10px;color:var(--dim);font-size:10.5px;line-height:1.6">' +
+      (S.audio
+        ? "已加载「" + esc(S.audioName || "音频") + "」，时长 " + S.audioDur.toFixed(2) + "s。偏移为正表示音乐延后，为负表示提前。"
+        : "未加载音乐，时间轴按 BPM 推进。也可以直接把音频文件拖进窗口。") +
+    '</div>';
+
+  const bind = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
+  bind("dW", "change", e => { pushUndo(); resizeDoc(+e.target.value || S.doc.w, S.doc.h, S.scaleOnResize); fitView(); draw(); drawTimeline(); });
+  bind("dH", "change", e => { pushUndo(); resizeDoc(S.doc.w, +e.target.value || S.doc.h, S.scaleOnResize); fitView(); draw(); drawTimeline(); });
+  bind("btnFitResize", "click", () => { S.scaleOnResize = !S.scaleOnResize; renderInspector(); });
+  box.querySelectorAll("[data-size]").forEach(b => {
+    b.onclick = () => {
+      pushUndo();
+      const [w, h] = b.dataset.size.split(",").map(Number);
+      resizeDoc(w, h, S.scaleOnResize); fitView(); draw(); drawTimeline(); renderInspector();
+    };
+  });
+  bind("bgType", "change", e => { pushUndo(); S.bg.type = e.target.value; draw(); renderInspector(); });
+  bind("bgColor", "input", e => { beginEdit(); S.bg.color = e.target.value; draw(); });
+  bind("bgColor", "change", endEdit);
+  bind("bgC1", "input", e => { beginEdit(); S.bg.c1 = e.target.value; draw(); });
+  bind("bgC1", "change", endEdit);
+  bind("bgC2", "input", e => { beginEdit(); S.bg.c2 = e.target.value; draw(); });
+  bind("bgC2", "change", endEdit);
+  bind("bgAngle", "input", e => {
+    beginEdit(); S.bg.angle = +e.target.value;
+    document.getElementById("vAngle").textContent = e.target.value + "°";
+    draw();
+  });
+  bind("bgAngle", "change", endEdit);
+  bind("bgImgBtn", "click", () => document.getElementById("bgPick").click());
+  bind("btnAudio2", "click", () => document.getElementById("audioPick").click());
+  bind("audOff", "input", e => {
+    S.audioOffset = (+e.target.value) / 1000;
+    const v = document.getElementById("vAudOff");
+    if (v) v.textContent = S.audioOffset.toFixed(2) + "s";
+  });
+  bind("audOffReset", "click", () => { pushUndo(); S.audioOffset = 0; renderInspector(); });
+  bind("audOffNudge", "click", () => {
+    pushUndo();
+    S.audioOffset = S.beat * 60 / S.bpm;
+    renderInspector();
+    toast("音乐起点已对齐到第 " + S.beat.toFixed(2) + " 拍");
+  });
+}
+
+function clipHint(p){
+  return '<div id="clipHint" style="display:none;margin:0 10px 6px;padding:6px 8px;background:#3a2f1c;border:1px solid #7a5f33;border-radius:5px;color:#f5d9a8;font-size:10.5px;line-height:1.6"></div>';
+}
+
+function updateClipHint(p){
+  const el = document.getElementById("clipHint");
+  if (!el) return;
+  if (!p){ el.style.display = "none"; return; }
+  const c = activeClipFor(p, S.beat);
+  if (!c){ el.style.display = "none"; return; }
+  const a = ACTION_LIB.find(x => x.id === c.actionId);
+  el.style.display = "block";
+  el.textContent = S.playing
+    ? "正在播放动作片段「" + (a ? a.name : "") + "」，下面显示的是实时数值"
+    : "当前时间在动作片段「" + (a ? a.name : "") + "」内，属性修改会被片段覆盖。把播放头移出片段范围再调关键帧。";
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function renderAll(){
+  renderLayers();
+  renderInspector();
+  draw();
+  drawTimeline();
+  updateTime();
+  syncZoomLabel();
+  syncRecBtn();
+  syncMidiUI();
+  document.getElementById("btnAddTex").disabled = !S.selected;
+  document.getElementById("btnDelPart").disabled = !S.selected;
+  document.getElementById("cueCount").textContent = S.cues.length ? S.cues.length + " 个卡点" : "";
+}
+
+/* ============================ 画布交互 ============================ */
+let drag = null;
+let pivotDrag = null;
+let panDrag = null;
+let gizmoDrag = null;
+
+function movePivotTo(mx, my){
+  const { p, it } = pivotDrag;
+  const m = worldOf(p);
+  const det = m.a*m.d - m.b*m.c || 1e-6;
+  const dx = mx - m.e, dy = my - m.f;
+  const u = ( m.d*dx - m.c*dy)/det + it.ax;
+  const v = (-m.b*dx + m.a*dy)/det + it.ay;
+  setPivot(p, it, u, v);
+  draw();
+  const fx = document.getElementById("fPx"), fy = document.getElementById("fPy");
+  if (fx) fx.value = Math.round(p.ax);
+  if (fy) fy.value = Math.round(p.ay);
+}
+
+/* 命中测试：bbox 内再按贴图 alpha 判定，点在透明处会自动落到下方图层 */
+function alphaHitAt(it, u, v){
+  const img = it.img;
+  if (!img || !img.width) return true;
+  const map = alphaMapOf(img);
+  if (!map) return true;
+  const mx = clamp(Math.floor(u / img.width * map.w), 0, map.w - 1);
+  const my = clamp(Math.floor(v / img.height * map.h), 0, map.h - 1);
+  return map.a[my * map.w + mx] > 10;
+}
+
+function hitPart(mx, my){
+  let loose = null;                    // 全部透明的兜底：最上面那个 bbox 命中
+  for (let i = S.parts.length - 1; i >= 0; i--){
+    const p = S.parts[i];
+    if (!p.visible || p.locked) continue;
+    const it = p.variants[p.texIndex] || p.variants[0];
+    if (!it) continue;
+    const m = worldOf(p);
+    const det = m.a*m.d - m.b*m.c || 1e-6;
+    const dx = mx - m.e, dy = my - m.f;
+    const u = ( m.d*dx - m.c*dy)/det + it.ax;
+    const v = (-m.b*dx + m.a*dy)/det + it.ay;
+    const bb = it.bbox;
+    if (u >= bb.x && v >= bb.y && u <= bb.x + bb.w && v <= bb.y + bb.h){
+      if (alphaHitAt(it, u, v)) return p;
+      if (!loose) loose = p;
+    }
+  }
+  return loose;
+}
+
+function setPivot(p, it, nax, nay){
+  const bb = it.bbox;
+  const u = bb.w ? (nax - bb.x) / bb.w : 0.5;
+  const v = bb.h ? (nay - bb.y) / bb.h : 0.5;
+  const dax = nax - it.ax, day = nay - it.ay;
+  if (Math.abs(dax) < 1e-6 && Math.abs(day) < 1e-6) return;
+  const c = Math.cos(p.rot), s = Math.sin(p.rot);
+  p.x += c * dax * p.sx - s * day * p.sy;
+  p.y += s * dax * p.sx + c * day * p.sy;
+  p.pu = u; p.pv = v;
+  applyPivot(p);
+
+  // 子级的坐标是相对父级原点（轴心）的，轴心一动子级就会整体漂移。
+  // 把子级局部坐标反向平移 (dax, day)，正好抵消，视觉上原地不动。
+  for (const ch of S.parts){
+    if (ch.parentId !== p.id) continue;
+    ch.x -= dax; ch.y -= day;
+    for (const k of ch.keys){ k.x -= dax; k.y -= day; }
+    for (const cl of S.clips){
+      if (cl.partId === ch.id && cl.base){ cl.base.x -= dax; cl.base.y -= day; }
+    }
+  }
+}
+
+view.addEventListener("pointerdown", e => {
+  const r = view.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+
+  if (e.button === 1){
+    e.preventDefault();
+    panDrag = { mx, my, ox: S.view.ox, oy: S.view.oy };
+    try { view.setPointerCapture(e.pointerId); } catch(err){}
+    view.style.cursor = "grabbing";
+    return;
+  }
+  if (e.button !== 0) return;
+
+  if (S.playing) stop();
+
+  if (S.pivotMode && S.selected){
+    const p = S.selected;
+    const it = p.variants[p.texIndex] || p.variants[0];
+    beginEdit();
+    pivotDrag = { p, it };
+    movePivotTo(mx, my);
+    try { view.setPointerCapture(e.pointerId); } catch(err){}
+    e.preventDefault();
+    return;
+  }
+
+  if (S.selected && !S.selected.locked){
+    const gh = hitGizmo(mx, my);
+    if (gh){
+      const p = S.selected;
+      if (gh.type === "del"){ pushUndo(); deletePart(p); return; }
+      if (gh.type === "dup"){ pushUndo(); duplicatePart(p); return; }
+      beginEdit();
+      if (gh.type === "rot"){
+        const par = p.parentId ? S.parts.find(q => q.id === p.parentId) : null;
+        const pm = par ? worldOf(par) : rootMatrix();
+        const a = invLinear(pm, mx - pm.e, my - pm.f);
+        gizmoDrag = { type: "rot", p, pm, rot0: p.rot, a0: Math.atan2(a.y - p.y, a.x - p.x) };
+      } else {
+        gizmoDrag = { type: "scale", p, i: gh.i, m0: gh.g.m, sx0: p.sx, sy0: p.sy, L: gh.g.L };
+      }
+      try { view.setPointerCapture(e.pointerId); } catch(err){}
+      e.preventDefault();
+      return;
+    }
+  }
+
+  const hit = hitPart(mx, my);
+
+  if (!hit && S.selected){
+    clearSel();
+    S.selected = null;
+    renderAll();
+    return;
+  }
+  if (hit && hit !== S.selected) selectPart(hit);
+  if (!hit) return;
+
+  beginEdit();
+  drag = { p: hit, mx, my, x0: hit.x, y0: hit.y, rot0: hit.rot, mode: e.shiftKey ? "rot" : "move" };
+  view.setPointerCapture(e.pointerId);
+});
+
+view.addEventListener("pointermove", e => {
+  const r = view.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+
+  if (panDrag){
+    S.view.ox = panDrag.ox + (mx - panDrag.mx);
+    S.view.oy = panDrag.oy + (my - panDrag.my);
+    draw();
+    return;
+  }
+  if (pivotDrag){
+    movePivotTo(mx, my);
+    return;
+  }
+  if (gizmoDrag){
+    const d = gizmoDrag, p = d.p;
+    if (d.type === "rot"){
+      const a = invLinear(d.pm, mx - d.pm.e, my - d.pm.f);
+      let delta = Math.atan2(a.y - p.y, a.x - p.x) - d.a0;
+      const deg = delta * 180 / Math.PI;
+      const snapDeg = Math.round(deg / 15) * 15;
+      if (!e.altKey && Math.abs(deg - snapDeg) < 3) delta = snapDeg * Math.PI / 180;
+      p.rot = d.rot0 + delta;
+    } else {
+      const L = invLinear(d.m0, mx - d.m0.e, my - d.m0.f);
+      const C = d.L[d.i];
+      const kx = Math.abs(C[0]) > 1 ? L.x / C[0] : 1;
+      const ky = Math.abs(C[1]) > 1 ? L.y / C[1] : 1;
+      let fx = kx, fy = ky;
+      if (S.linkScale || e.shiftKey){ const k = (kx + ky) / 2; fx = fy = k; }
+      p.sx = clamp(d.sx0 * fx, 0.05, 8);
+      p.sy = clamp(d.sy0 * fy, 0.05, 8);
+    }
+    touch(p);
+    draw(); drawTimeline(); syncNums(p);
+    return;
+  }
+  if (!drag){
+    if (!panDrag){
+      const gh = (S.selected && !S.selected.locked) ? hitGizmo(mx, my) : null;
+      view.style.cursor = !gh ? (S.pivotMode ? "crosshair" : "default")
+        : gh.type === "rot" ? "grab" : gh.type === "scale" ? "nwse-resize" : "pointer";
+    }
+    return;
+  }
+
+  const p = drag.p;
+  const par = p.parentId ? S.parts.find(q => q.id === p.parentId) : null;
+  const pm = par ? worldOf(par) : rootMatrix();
+
+  if (drag.mode === "rot"){
+    const c = worldOf(p);
+    const a0 = Math.atan2(drag.my - c.f, drag.mx - c.e);
+    const a1 = Math.atan2(my - c.f, mx - c.e);
+    p.rot = drag.rot0 + (a1 - a0);
+  } else {
+    const d = invLinear(pm, mx - drag.mx, my - drag.my);
+    p.x = drag.x0 + d.x;
+    p.y = drag.y0 + d.y;
+  }
+  touch(p);
+  draw(); drawTimeline(); syncNums(p);
+});
+
+view.addEventListener("pointerup", e => {
+  if (panDrag){
+    panDrag = null;
+    view.style.cursor = S.pivotMode ? "crosshair" : "default";
+    try { view.releasePointerCapture(e.pointerId); } catch(err){}
+    return;
+  }
+  if (pivotDrag){
+    pivotDrag = null;
+    endEdit();
+    try { view.releasePointerCapture(e.pointerId); } catch(err){}
+    renderInspector();
+    return;
+  }
+  if (gizmoDrag){
+    gizmoDrag = null;
+    endEdit();
+    try { view.releasePointerCapture(e.pointerId); } catch(err){}
+    renderInspector(); drawTimeline();
+    return;
+  }
+  if (drag){
+    try { view.releasePointerCapture(e.pointerId); } catch(err){}
+    drag = null; endEdit(); drawTimeline(); renderInspector();
+  }
+});
+
+/* ---- 视图缩放（镜头） ---- */
+function zoomViewAt(mx, my, k){
+  const old = S.view.scale;
+  const ns = clamp(old * k, 0.02, 24);
+  if (Math.abs(ns - old) < 1e-9) return;
+  S.view.ox = mx - (mx - S.view.ox) * (ns / old);
+  S.view.oy = my - (my - S.view.oy) * (ns / old);
+  S.view.scale = ns;
+  draw();
+}
+function zoomViewCenter(k){
+  zoomViewAt(view.clientWidth / 2, view.clientHeight / 2, k);
+}
+function setViewScale100(){
+  S.view.scale = 1;
+  S.view.ox = (view.clientWidth - S.doc.w) / 2;
+  S.view.oy = (view.clientHeight - S.doc.h) / 2;
+  draw();
+}
+
+view.addEventListener("wheel", e => {
+  e.preventDefault();
+
+  // Alt + 滚轮：缩放选中的部件（保留旧操作习惯）
+  if (e.altKey && S.selected && !S.selected.locked){
+    const p = S.selected;
+    beginEdit();
+    const k = e.deltaY > 0 ? 0.94 : 1.06;
+    p.sx = clamp(p.sx * k, 0.05, 5);
+    p.sy = clamp(p.sy * k, 0.05, 5);
+    touch(p); draw(); syncNums(p);
+    clearTimeout(view._wt);
+    view._wt = setTimeout(endEdit, 260);
+    return;
+  }
+
+  const r = view.getBoundingClientRect();
+  const step = e.deltaMode === 1 ? 0.05 : 0.0015;
+  zoomViewAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * step));
+}, { passive: false });
+
+view.addEventListener("mousedown", e => { if (e.button === 1) e.preventDefault(); });
+
+view.addEventListener("contextmenu", e => {
+  e.preventDefault();
+  const fit = () => { fitView(); draw(); };
+  showMenu(e.clientX, e.clientY, [
+    { label: "适应窗口", key: "Fit", fn: fit },
+    { label: "实际大小 100%", fn: setViewScale100 },
+    "-",
+    { label: "放大", key: "+", fn: () => zoomViewCenter(1.2) },
+    { label: "缩小", key: "−", fn: () => zoomViewCenter(1 / 1.2) },
+    "-",
+    { label: "缩放重置", fn: () => { fitView(); draw(); } }
+  ]);
+});
+
+function syncNums(p){
+  const busy = el => el && el === document.activeElement;
+  const x = document.getElementById("fX"), y = document.getElementById("fY"), r = document.getElementById("fRot");
+  const sx = document.getElementById("fSx"), sy = document.getElementById("fSy"), al = document.getElementById("fAlpha");
+  if (x && !busy(x)) x.value = Math.round(p.x);
+  if (y && !busy(y)) y.value = Math.round(p.y);
+  if (r && !busy(r)){
+    r.value = Math.round(p.rot*180/Math.PI);
+    const v = document.getElementById("vRot"); if (v) v.textContent = r.value + "°";
+  }
+  if (sx && !busy(sx)){
+    sx.value = Math.round(p.sx*100);
+    const v = document.getElementById("vSx"); if (v) v.textContent = sx.value + "%";
+  }
+  if (sy && !busy(sy)){
+    sy.value = Math.round(p.sy*100);
+    const v = document.getElementById("vSy"); if (v) v.textContent = sy.value + "%";
+  }
+  if (al && !busy(al)){
+    al.value = Math.round(p.alpha*100);
+    const v = document.getElementById("vAlpha"); if (v) v.textContent = al.value + "%";
+  }
+  updateClipHint(p);
+}
+
+/* ============================ 时间轴交互 ============================ */
+let tlDrag = null;
+
+function tlX(e){ return e.clientX - tl.getBoundingClientRect().left; }
+function tlY(e){ return e.clientY - tl.getBoundingClientRect().top; }
+
+function hitTestTimeline(mx, my){
+  for (let i = 0; i < S.cues.length; i++){
+    if (Math.abs(xOf(S.cues[i]) - mx) < 7 && my < rulerH + 2) return { type: "cue", idx: i };
+  }
+  for (const { p, y } of tlRows){
+    if (my < y || my > y + rowH) continue;
+    for (const c of S.clips.filter(c => c.partId === p.id)){
+      const x1 = xOf(c.start), x2 = xOf(c.start + c.dur);
+      if (mx >= x1 - 4 && mx <= x2 + 4) return { type: "clip", clip: c, part: p, edge: Math.abs(mx - x2) <= 7 };
+    }
+    for (const k of p.keys){
+      if (Math.abs(xOf(k.t) - mx) < 10) return { type: "key", key: k, part: p };
+    }
+  }
+  return { type: "playhead" };
+}
+
+tl.addEventListener("pointerdown", e => {
+  if (e.button !== 0) return;   // 右键交给 contextmenu 处理，避免它顺带清空多选
+  const mx = tlX(e), my = tlY(e);
+  hideMenu();
+
+  const hs = S.hsThumb;
+  if (hs && my >= hs.y - 4 && my <= hs.y + hs.h + 5 && mx >= hs.tx0 - 2 && mx <= hs.tx0 + hs.trackW + 2){
+    if (mx >= hs.x && mx <= hs.x + hs.w){
+      tlDrag = { type: "hscroll", off: mx - hs.x };
+    } else {
+      S.scrollBeat = clamp((mx - hs.tx0 - hs.w/2) / Math.max(1, hs.trackW - hs.w) * S.maxScrollBeat, 0, S.maxScrollBeat);
+      tlDrag = { type: "hscroll", off: hs.w/2 };
+      drawTimeline();
+    }
+    try { tl.setPointerCapture(e.pointerId); } catch(err){}
+    return;
+  }
+
+  const vs = S.vsThumb;
+  if (vs && mx >= vs.x - 4 && my >= vs.y0 && my <= vs.y0 + vs.span){
+    if (my >= vs.y && my <= vs.y + vs.h){
+      tlDrag = { type: "vscroll", off: my - vs.y };
+    } else {
+      S.scrollRow = clamp((my - vs.y0 - vs.h/2) / Math.max(1, vs.span - vs.h) * S.maxRowScroll, 0, S.maxRowScroll);
+      tlDrag = { type: "vscroll", off: vs.h/2 };
+      drawTimeline();
+    }
+    try { tl.setPointerCapture(e.pointerId); } catch(err){}
+    return;
+  }
+
+  if (mx < labelW && my > rulerH){
+    const row = tlRows.find(r => my >= r.y && my <= r.y + rowH);
+    if (row) selectPart(row.p);
+    return;
+  }
+
+  const hit = hitTestTimeline(mx, my);
+  const additive = e.shiftKey;
+
+  if (hit.type === "cue"){
+    tlDrag = { type: "cue", idx: hit.idx };
+    try { tl.setPointerCapture(e.pointerId); } catch(err){}
+    return;
+  }
+
+  if (hit.type === "clip"){
+    if (S.selected !== hit.part) selectPart(hit.part);
+    const already = S.selClips.indexOf(hit.clip) >= 0;
+    if (!additive && already) S.selectedClip = hit.clip;
+    else selClipToggle(hit.clip, additive);
+    drawTimeline();
+    if (additive) return;
+    const items = S.selClips.map(c => ({ c, s0: c.start }));
+    tlDrag = {
+      type: hit.edge ? "clip-resize" : "clip-move",
+      clip: hit.clip, grab: beatOf(mx) - hit.clip.start,
+      anchorStart: hit.clip.start, items
+    };
+    try { tl.setPointerCapture(e.pointerId); } catch(err){}
+    return;
+  }
+
+  if (hit.type === "key"){
+    if (S.selected !== hit.part) selectPart(hit.part);
+    const already = S.selKeys.some(s => s.key === hit.key);
+    if (!additive && already){
+      const hitSel = S.selKeys.find(s => s.key === hit.key);
+      if (hitSel) setSelKey(hitSel.partId, hitSel.key);
+    }
+    else selKeyToggle(hit.part.id, hit.key, additive);
+    // 播放头跟到这一帧，改属性才是改这一帧
+    if (!additive && Math.abs(S.beat - hit.key.t) > 1e-4) setBeat(hit.key.t);
+    drawTimeline();
+    if (additive) return;
+    const items = S.selKeys.map(s => ({ s, t0: s.key.t }));
+    tlDrag = { type: "key", p: hit.part, k: hit.key, anchor: hit.key.t, items };
+    try { tl.setPointerCapture(e.pointerId); } catch(err){}
+    return;
+  }
+
+  if (my < rulerH){
+    tlDrag = { type: "playhead" };
+    try { tl.setPointerCapture(e.pointerId); } catch(err){}
+    scrubTo(mx);
+    return;
+  }
+
+  tlDrag = { type: "maybe-marquee", x0: mx, y0: my, additive };
+  try { tl.setPointerCapture(e.pointerId); } catch(err){}
+});
+
+function applyMarquee(additive){
+  const m = S.marquee;
+  if (!m) return;
+  const x1 = Math.min(m.x1, m.x2), x2 = Math.max(m.x1, m.x2);
+  const y1 = Math.min(m.y1, m.y2), y2 = Math.max(m.y1, m.y2);
+  if (!additive){ S.selKeys = []; S.selClips = []; }
+
+  for (const { p, y } of tlRows){
+    if (y + rowH < y1 || y > y2) continue;
+    for (const k of p.keys){
+      const x = xOf(k.t);
+      if (x >= x1 && x <= x2 && !S.selKeys.some(s => s.key === k)) S.selKeys.push({ partId: p.id, key: k });
+    }
+    for (const c of S.clips.filter(c => c.partId === p.id)){
+      const cx = (xOf(c.start) + xOf(c.start + c.dur)) / 2;
+      if (cx >= x1 && cx <= x2 && S.selClips.indexOf(c) < 0) S.selClips.push(c);
+    }
+  }
+  const lastK = S.selKeys[S.selKeys.length - 1];
+  setSelKey(lastK ? lastK.partId : null, lastK ? lastK.key : null);
+  S.selectedClip = S.selClips[0] || null;
+}
+
+window.addEventListener("pointermove", e => {
+  if (!tlDrag) return;
+  const mx = tlX(e), my = tlY(e);
+  const t = tlDrag.type;
+
+  if (t === "playhead"){
+    scrubTo(mx);
+  } else if (t === "hscroll"){
+    const hs = S.hsThumb;
+    if (!hs) return;
+    const ratio = (mx - tlDrag.off - hs.tx0) / Math.max(1, hs.trackW - hs.w);
+    S.scrollBeat = clamp(ratio * S.maxScrollBeat, 0, S.maxScrollBeat);
+    drawTimeline();
+  } else if (t === "vscroll"){
+    const vs = S.vsThumb;
+    if (!vs) return;
+    const ratio = (my - tlDrag.off - vs.y0) / Math.max(1, vs.span - vs.h);
+    S.scrollRow = clamp(ratio * S.maxRowScroll, 0, S.maxRowScroll);
+    drawTimeline();
+  } else if (t === "cue"){
+    let b = Math.max(0, beatOf(mx));
+    if (S.snap) b = Math.round(b * 4) / 4;
+    S.cues[tlDrag.idx] = b;
+    drawTimeline();
+  } else if (t === "key"){
+    let b = Math.max(0, beatOf(mx));
+    if (S.snap) b = Math.round(b * 4) / 4;
+    const delta = b - tlDrag.anchor;
+    const touched = new Set();
+    tlDrag.items.forEach(it => {
+      it.s.key.t = Math.max(0, it.t0 + delta);
+      touched.add(it.s.partId);
+    });
+    touched.forEach(pid => {
+      const p = S.parts.find(x => x.id === pid);
+      if (p) p.keys.sort((a, c) => a.t - c.t);
+    });
+    // 播放头跟着被拖的帧走，否则改属性会落到别的时刻
+    const prim = tlDrag.items.find(it => S.selKey && it.s.partId === S.selKey.partId);
+    if (prim){ setSelKey(prim.s.partId, prim.s.key); S.beat = prim.s.key.t; }
+    applyAt(S.beat); draw(); drawTimeline(); updateTime();
+  } else if (t === "clip-move"){
+    let b = Math.max(0, beatOf(mx) - tlDrag.grab);
+    if (S.snap) b = Math.round(b * 4) / 4;
+    const delta = b - tlDrag.anchorStart;
+    tlDrag.items.forEach(it => { it.c.start = Math.max(0, it.s0 + delta); });
+    applyAt(S.beat); draw(); drawTimeline();
+  } else if (t === "clip-resize"){
+    let b = beatOf(mx) - tlDrag.clip.start;
+    if (S.snap) b = Math.round(b * 4) / 4;
+    tlDrag.clip.dur = Math.max(0.25, b);
+    applyAt(S.beat); draw(); drawTimeline();
+  } else if (t === "maybe-marquee" || t === "marquee"){
+    if (t === "maybe-marquee"){
+      if (Math.hypot(mx - tlDrag.x0, my - tlDrag.y0) < 4) return;
+      tlDrag.type = "marquee";
+    }
+    S.marquee = { x1: tlDrag.x0, y1: tlDrag.y0, x2: mx, y2: my };
+    applyMarquee(tlDrag.additive);
+    drawTimeline();
+  }
+});
+
+window.addEventListener("pointerup", () => {
+  if (!tlDrag) return;
+  const t = tlDrag.type;
+  const startX = tlDrag.x0;
+  tlDrag = null;
+  S.marquee = null;
+
+  if (t === "maybe-marquee"){
+    scrubTo(startX);
+  } else if (t === "playhead" || t === "hscroll" || t === "vscroll"){
+    drawTimeline();
+  } else {
+    applyAt(S.beat); draw(); drawTimeline();
+  }
+  if (S.tab === "curve") renderInspector();
+});
+
+tl.addEventListener("wheel", e => {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey){
+    const mx = Math.max(labelW + 8, tlX(e));
+    zoomAt(S.zoom * (e.deltaY > 0 ? 0.88 : 1.14), mx);
+  } else if (e.shiftKey){
+    S.scrollRow = clamp(S.scrollRow + e.deltaY, 0, S.maxRowScroll);
+    drawTimeline();
+  } else {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    S.scrollBeat = clamp(S.scrollBeat + d / pxPerBeat, 0, S.maxScrollBeat);
+    drawTimeline();
+  }
+}, { passive: false });
+
+function scrubTo(mx){
+  if (S.playing) stop();
+  let b = Math.max(0, beatOf(mx));
+  if (S.snap) b = Math.round(b * 4) / 4;
+  if (S.selKey && Math.abs(S.selKey.t - b) > 1e-4) S.selKey = null;
+  setBeat(b);
+}
+
+/* ============================ 复制 / 粘贴 / 右键菜单 ============================ */
+let clipboard = null;
+
+function clipName(c){ const a = ACTION_LIB.find(x => x.id === c.actionId); return a ? a.name : "动作"; }
+
+function copySelection(){
+  if (S.selClips.length){
+    const items = S.selClips.map(c => JSON.parse(JSON.stringify(c)));
+    clipboard = { kind: "clips", items };
+    toast(items.length > 1 ? "已复制 " + items.length + " 个片段" : "已复制片段「" + clipName(S.selClips[0]) + "」");
+    return true;
+  }
+  if (S.selKeys.length){
+    const items = S.selKeys.map(s => ({ partId: s.partId, key: JSON.parse(JSON.stringify(s.key)) }));
+    clipboard = { kind: "keys", items };
+    toast(items.length > 1 ? "已复制 " + items.length + " 个关键帧" : "已复制关键帧");
+    return true;
+  }
+  toast("先选中片段或关键帧");
+  return false;
+}
+
+function deleteSelection(){
+  if (!hasSel()) return false;
+  pushUndo();
+  S.selClips.forEach(c => { S.clips = S.clips.filter(x => x !== c); });
+  S.selKeys.forEach(s => {
+    const p = S.parts.find(x => x.id === s.partId);
+    if (p) p.keys = p.keys.filter(k => k !== s.key);
+  });
+  clearSel();
+  applyAt(S.beat); renderAll();
+  return true;
+}
+
+function cutSelection(){
+  if (copySelection()) deleteSelection();
+}
+
+function pasteClipboard(){
+  if (!clipboard){ toast("剪贴板是空的"); return; }
+  const at = S.snap ? Math.round(S.beat * 4) / 4 : S.beat;
+  pushUndo();
+
+  if (clipboard.kind === "clips"){
+    const items = clipboard.items;
+    const t0 = Math.min.apply(null, items.map(c => c.start));
+    const single = items.length === 1;
+    const made = [];
+    items.forEach(src => {
+      const target = (single && S.selected) ? S.selected : S.parts.find(p => p.id === src.partId);
+      if (!target) return;
+      const base = (target.id === src.partId) ? src.base : {
+        x: target.x, y: target.y, rot: target.rot,
+        sx: target.sx, sy: target.sy, alpha: target.alpha, tex: target.texIndex
+      };
+      const c = Object.assign({}, JSON.parse(JSON.stringify(src)), {
+        base, id: "c" + (++uid), partId: target.id,
+        start: Math.max(0, at + (src.start - t0))
+      });
+      S.clips.push(c);
+      made.push(c);
+    });
+    if (!made.length){ toast("没有可用的目标图层"); return; }
+    S.selClips = made; S.selectedClip = made[0];
+    S.selKeys = []; S.selKey = null;
+    applyAt(S.beat); renderAll();
+    toast("已粘贴 " + made.length + " 个片段");
+    return;
+  }
+
+  const items = clipboard.items;
+  const t0 = Math.min.apply(null, items.map(i => i.key.t));
+  const single = items.length === 1;
+  const made = [];
+  items.forEach(it => {
+    const target = (single && S.selected) ? S.selected : S.parts.find(p => p.id === it.partId);
+    if (!target) return;
+    const k = JSON.parse(JSON.stringify(it.key));
+    k.t = Math.max(0, at + (it.key.t - t0));
+    target.keys = target.keys.filter(x => Math.abs(x.t - k.t) > 1e-3);
+    target.keys.push(k);
+    target.keys.sort((a, b) => a.t - b.t);
+    made.push({ partId: target.id, key: k });
+  });
+  if (!made.length){ toast("没有可用的目标图层"); return; }
+  S.selKeys = made;
+  setSelKey(made[made.length - 1].partId, made[made.length - 1].key);
+  S.selClips = []; S.selectedClip = null;
+  applyAt(S.beat); renderAll();
+  toast("已粘贴 " + made.length + " 个关键帧");
+}
+
+function duplicateSelection(){
+  if (S.selClips.length){
+    pushUndo();
+    const items = S.selClips.map(c => JSON.parse(JSON.stringify(c)));
+    const t0 = Math.min.apply(null, items.map(c => c.start));
+    const end = Math.max.apply(null, items.map(c => c.start + c.dur));
+    const made = items.map(src => {
+      const c = Object.assign({}, src, { id: "c" + (++uid), start: Math.max(0, end + (src.start - t0)) });
+      S.clips.push(c);
+      return c;
+    });
+    S.selClips = made; S.selectedClip = made[0];
+    S.selKeys = []; S.selKey = null;
+    applyAt(S.beat); renderAll();
+    toast("已创建 " + made.length + " 个副本");
+    return;
+  }
+  if (S.selKeys.length){
+    pushUndo();
+    const items = S.selKeys.map(s => ({ partId: s.partId, key: JSON.parse(JSON.stringify(s.key)) }));
+    const t0 = Math.min.apply(null, items.map(i => i.key.t));
+    const maxT = Math.max.apply(null, items.map(i => i.key.t));
+    const made = [];
+    items.forEach(it => {
+      const p = S.parts.find(x => x.id === it.partId);
+      if (!p) return;
+      const k = JSON.parse(JSON.stringify(it.key));
+      k.t = maxT + 1 + (it.key.t - t0);
+      p.keys = p.keys.filter(x => Math.abs(x.t - k.t) > 1e-3);
+      p.keys.push(k);
+      p.keys.sort((a, b) => a.t - b.t);
+      made.push({ partId: p.id, key: k });
+    });
+    S.selKeys = made; S.selKey = made[made.length - 1];
+    S.selClips = []; S.selectedClip = null;
+    applyAt(S.beat); renderAll();
+    toast("已创建 " + made.length + " 个副本");
+    return;
+  }
+  toast("先选中片段或关键帧");
+}
+
+const ctxMenu = document.getElementById("ctxMenu");
+function hideMenu(){ ctxMenu.style.display = "none"; }
+function showMenu(x, y, items){
+  ctxMenu.innerHTML = "";
+  items.forEach(it => {
+    if (it === "-"){ ctxMenu.appendChild(document.createElement("hr")); return; }
+    const d = document.createElement("div");
+    d.className = "mi" + (it.disabled ? " dim" : "");
+    d.innerHTML = "<span>" + it.label + "</span>" + (it.key ? "<em>" + it.key + "</em>" : "");
+    if (!it.disabled) d.onclick = () => { hideMenu(); it.fn(); };
+    ctxMenu.appendChild(d);
+  });
+  ctxMenu.style.display = "block";
+  const r = ctxMenu.getBoundingClientRect();
+  ctxMenu.style.left = Math.min(x, window.innerWidth - r.width - 8) + "px";
+  ctxMenu.style.top = Math.min(y, window.innerHeight - r.height - 8) + "px";
+}
+
+tl.addEventListener("contextmenu", e => {
+  e.preventDefault();
+  const mx = tlX(e), my = tlY(e);
+  const hit = hitTestTimeline(mx, my);
+  if (hit.type === "clip"){
+    // 右键已选中的项时保留多选，否则「镜像选中的关键帧」只会作用到一个
+    if (!S.selClips.includes(hit.clip)){
+      if (S.selected !== hit.part) selectPart(hit.part);
+      selClipToggle(hit.clip, false);
+    }
+    drawTimeline();
+  } else if (hit.type === "key"){
+    if (!S.selKeys.some(s => s.key === hit.key)){
+      if (S.selected !== hit.part) selectPart(hit.part);
+      selKeyToggle(hit.part.id, hit.key, false);
+    }
+    drawTimeline();
+  }
+  const anySel = hasSel();
+  const items = [];
+  if (anySel){
+    items.push({ label: "复制", key: "Ctrl+C", fn: copySelection });
+    items.push({ label: "剪切", key: "Ctrl+X", fn: cutSelection });
+    items.push({ label: "创建副本", key: "Ctrl+D", fn: duplicateSelection });
+    if (S.selClips.length === 1){
+      items.push("-");
+      items.push({ label: "分解为关键帧", fn: () => expandClip(S.selClips[0]) });
+    }
+  }
+  if (S.selKeys.length || S.selClips.length){
+    items.push("-");
+    items.push({ label: "镜像选中（水平）", key: "Shift+H", fn: () => mirrorSelection("x") });
+    items.push({ label: "镜像选中（垂直）", key: "Shift+V", fn: () => mirrorSelection("y") });
+  }
+  items.push({ label: "粘贴到播放头", key: "Ctrl+V", disabled: !clipboard, fn: pasteClipboard });
+  if (anySel){
+    items.push("-");
+    items.push({ label: "删除", key: "Del", fn: deleteSelection });
+  }
+  showMenu(e.clientX, e.clientY, items);
+});
+
+window.addEventListener("pointerdown", e => { if (!ctxMenu.contains(e.target)) hideMenu(); }, true);
+
+/* ============================ 顶栏与工具 ============================ */
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.classList.remove("show"), 1600);
+}
+
+document.getElementById("btnPlay").onclick = togglePlay;
+document.getElementById("btnUndo").onclick = undo;
+document.getElementById("btnRedo").onclick = redo;
+document.getElementById("btnHelp").onclick = () => window.open("使用说明.html", "_blank");
+document.getElementById("btnImport").onclick = () => document.getElementById("filePick").click();
+document.getElementById("filePick").onchange = e => { addFiles([...e.target.files]); e.target.value = ""; };
+document.getElementById("btnAddTex").onclick = () => document.getElementById("texPick").click();
+document.getElementById("texPick").onchange = e => { addTexture([...e.target.files]); e.target.value = ""; };
+document.getElementById("btnAudio").onclick = () => document.getElementById("audioPick").click();
+document.getElementById("audioPick").onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  loadAudioFile(f);
+  e.target.value = "";
+};
+document.getElementById("bgPick").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  pushUndo();
+  S.bg.img = await loadSrc(await readDataURL(f));
+  S.bg.type = "image";
+  draw(); renderInspector();
+  e.target.value = "";
+};
+document.getElementById("btnDelPart").onclick = () => {
+  if (!S.selected) return;
+  pushUndo();
+  const dead = S.selected.id;
+  S.clips = S.clips.filter(c => c.partId !== dead);
+  S.parts = S.parts.filter(p => p.id !== dead);
+  S.selected = S.parts[S.parts.length - 1] || null;
+  clearSel();
+  renderAll();
+};
+document.getElementById("btnExport").onclick = openExport;
+document.getElementById("btnMakeComp3").onclick = makeComponentFromSelection;
+function buildProjectData(){
+  return {
+    app: "rigframe", version: 2,
+    doc: S.doc,
+    bg: { type: S.bg.type, color: S.bg.color, c1: S.bg.c1, c2: S.bg.c2, angle: S.bg.angle,
+          imgSrc: S.bg.img ? S.bg.img.src : null },
+    bpm: S.bpm, sig: S.sig, cues: S.cues,
+    midi: S.midi ? { name: S.midi.name, ppq: S.midi.ppq, tempoBpm: S.midi.tempoBpm, durBeat: S.midi.durBeat,
+                     notes: S.midi.notes, pitches: S.midi.pitches, chans: S.midi.chans } : null,
+    lip: { partId: S.lip.partId, ch: S.lip.ch, def: S.lip.def, map: S.lip.map },
+    clips: S.clips.map(c => ({ partId: c.partId, actionId: c.actionId, start: c.start, dur: c.dur,
+                               flipX: !!c.flipX, flipY: !!c.flipY, base: c.base })),
+    parts: S.parts.map(p => ({
+      id: p.id, slot: p.slot, kind: p.kind, parentId: p.parentId,
+      x: p.x, y: p.y, rot: p.rot, sx: p.sx, sy: p.sy, alpha: p.alpha,
+      flipX: !!p.flipX, flipY: !!p.flipY,
+      ax: p.ax, ay: p.ay, pu: p.pu, pv: p.pv,
+      mesh: p.mesh ? { ...p.mesh } : null,
+      spring: p.spring ? { ...p.spring } : null,
+      bend: p.bend ? p.bend.slice() : null,
+      texIndex: p.texIndex, visible: p.visible, locked: p.locked,
+      keys: p.keys.map(k => ({ ...k })),
+      variants: p.variants.map(v => ({ variant: v.variant, ax: v.ax, ay: v.ay, bbox: v.bbox, src: v.img.src }))
+    }))
+  };
+}
+
+document.getElementById("btnSave").onclick = () => {
+  const data = buildProjectData();
+  const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "rigframe-project.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast("已导出工程（含 " + S.parts.length + " 个图层贴图）");
+};
+
+/* ---------- 导入工程 ---------- */
+document.getElementById("btnLoad").onclick = () => document.getElementById("projPick").click();
+document.getElementById("projPick").onchange = e => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (f) importProject(f);
+};
+
+async function importProject(file){
+  try{
+    const data = JSON.parse(await file.text());
+    if (!data || !Array.isArray(data.parts)) throw new Error("不是有效的工程文件");
+
+    const parts = [];
+    let maxUid = 0;
+    for (const raw of data.parts){
+      const vs = [];
+      for (const v of (raw.variants || [])){
+        if (!v.src) continue;
+        const img = await loadSrc(v.src);
+        const bbox = v.bbox || alphaBBox(img);
+        vs.push({
+          variant: v.variant || "", img, bbox,
+          ax: v.ax !== undefined ? v.ax : bbox.x + bbox.w/2,
+          ay: v.ay !== undefined ? v.ay : bbox.y + bbox.h/2,
+          thumb: makeThumb(img, bbox)
+        });
+      }
+      if (!vs.length) continue;
+      const id = raw.id || nid();
+      const m = /^p(\d+)$/.exec(id);
+      if (m) maxUid = Math.max(maxUid, +m[1]);
+      const p = {
+        id, slot: raw.slot || "layer", kind: raw.kind || classify(raw.slot || "layer"),
+        variants: vs, texIndex: clamp(Math.round(raw.texIndex || 0), 0, vs.length - 1),
+        x: +raw.x || 0, y: +raw.y || 0, rot: +raw.rot || 0,
+        sx: raw.sx === undefined ? 1 : +raw.sx, sy: raw.sy === undefined ? 1 : +raw.sy,
+        alpha: raw.alpha === undefined ? 1 : +raw.alpha,
+        flipX: !!raw.flipX, flipY: !!raw.flipY,
+        ax: raw.ax, ay: raw.ay,
+        pu: raw.pu === undefined ? 0.5 : +raw.pu, pv: raw.pv === undefined ? 0.5 : +raw.pv,
+        parentId: raw.parentId || null,
+        keys: (raw.keys || []).map(k => ({ ...k, bend: k.bend ? k.bend.slice() : undefined })),
+        mesh: raw.mesh ? { ...raw.mesh } : null,
+        spring: raw.spring ? { ...raw.spring } : null,
+        bend: raw.bend ? raw.bend.slice() : null,
+        visible: raw.visible !== false, locked: !!raw.locked, bbox: vs[0].bbox
+      };
+      applyPivot(p);
+      parts.push(p);
+    }
+    if (!parts.length) throw new Error("工程里没有可用的图层贴图");
+
+    const oldW = S.doc.w, oldH = S.doc.h;
+    S.parts = parts;
+    S.doc = (data.doc && data.doc.w > 0 && data.doc.h > 0) ? { w: +data.doc.w, h: +data.doc.h } : { w: oldW, h: oldH };
+    S.bg = Object.assign({ type: "color", color: "#14141a", c1: "#1d3346", c2: "#3a1f2e", angle: 135, img: null },
+                         data.bg || {});
+    S.bg.img = null;
+    if (data.bg && data.bg.imgSrc){
+      try { S.bg.img = await loadSrc(data.bg.imgSrc); } catch(err){}
+    }
+    if (S.bg.type === "image" && !S.bg.img) S.bg.type = "color";
+    S.bpm = +data.bpm || 120;
+    S.sig = +data.sig || 4;
+    S.cues = Array.isArray(data.cues) ? data.cues.map(Number) : [];
+    S.midi = (data.midi && Array.isArray(data.midi.notes) && data.midi.notes.length)
+      ? { name: data.midi.name || "MIDI", ppq: +data.midi.ppq || 480, tempoBpm: +data.midi.tempoBpm || 0,
+          durBeat: +data.midi.durBeat || 0, notes: data.midi.notes.map(n => ({ t: +n.t, d: +n.d, pitch: +n.pitch, vel: +n.vel || 90, ch: +n.ch || 0 })),
+          pitches: Array.isArray(data.midi.pitches) ? data.midi.pitches.map(Number) : [],
+          chans: Array.isArray(data.midi.chans) ? data.midi.chans.map(Number) : [] }
+      : null;
+    if (S.midi && (!S.midi.pitches.length || !S.midi.chans.length)){
+      S.midi.pitches = [...new Set(S.midi.notes.map(n => n.pitch))].sort((a, b) => b - a);
+      S.midi.chans = [...new Set(S.midi.notes.map(n => n.ch))].sort((a, b) => a - b);
+    }
+    S.lip = { partId: (data.lip && data.lip.partId) || null,
+              ch: data.lip && data.lip.ch !== undefined ? +data.lip.ch : -1,
+              def: data.lip && data.lip.def !== undefined ? +data.lip.def : 0,
+              map: (data.lip && data.lip.map) ? { ...data.lip.map } : {} };
+    S.clips = (data.clips || []).map(c => ({
+      id: "c" + (++uid), partId: c.partId, actionId: c.actionId,
+      start: +c.start || 0, dur: +c.dur || 1,
+      flipX: !!c.flipX, flipY: !!c.flipY,
+      base: Object.assign({ x: 0, y: 0, rot: 0, sx: 1, sy: 1, alpha: 1, tex: 0 }, c.base || {})
+    }));
+    uid = Math.max(uid, maxUid);
+
+    S.selected = null; S.selectedClip = null; S.selKey = null;
+    S.selKeys = []; S.selClips = [];
+    S.beat = 0; S.playing = false;
+    undoStack.length = 0; redoStack.length = 0;
+
+    applyAt(0); fitView(); renderAll(); syncUndoBtns();
+    toast("已导入工程：" + S.parts.length + " 个图层、" + S.clips.length + " 个片段");
+  } catch(err){
+    console.error(err);
+    toast("导入失败：" + (err && err.message ? err.message : err));
+  }
+}
+function syncRecBtn(){
+  const b = document.getElementById("btnRec");
+  if (!b) return;
+  b.classList.toggle("on", S.record);
+  b.textContent = (S.record ? "● " : "○ ") + "自动记录";
+  b.title = S.record ? "自动记录已开：改属性会在播放头落关键帧（全局）" : "自动记录已关：改属性只改当前姿态（全局）";
+}
+
+function addKeyframeNow(){
+  const p = S.selected;
+  if (!p){ toast("先在左侧选一个图层"); return; }
+  const at = S.snap ? Math.round(S.beat * 4) / 4 : S.beat;
+  pushUndo();
+  upsertKey(p, at);
+  renderAll();
+  const covered = S.clips.some(c => c.partId === p.id && at >= c.start - 1e-6 && at <= c.start + c.dur + 1e-6);
+  toast(covered
+    ? "已在第 " + at.toFixed(2) + " 拍打关键帧（该时段被动作片段覆盖，暂不生效）"
+    : "已在第 " + at.toFixed(2) + " 拍给「" + p.slot + "」打关键帧");
+}
+
+document.getElementById("btnRec").onclick = () => {
+  S.record = !S.record;
+  syncRecBtn();
+  toast(S.record ? "自动记录已开启：改属性会落关键帧" : "自动记录已关闭：改属性只改当前姿态");
+};
+document.getElementById("btnKeyFrame").onclick = addKeyframeNow;
+
+document.getElementById("btnSnap").onclick = e => {
+  S.snap = !S.snap;
+  e.target.classList.toggle("on", S.snap);
+  e.target.textContent = S.snap ? "吸附 1/4" : "吸附 关";
+};
+document.getElementById("zoomIn").onclick = () => setZoom(S.zoom * 1.3);
+document.getElementById("zoomOut").onclick = () => setZoom(S.zoom / 1.3);
+document.getElementById("zoomFit").onclick = zoomFit;
+document.getElementById("btnCue").onclick = () => {
+  const b = Math.round(S.beat * 4) / 4;
+  if (!S.cues.some(c => Math.abs(c - b) < 0.01)) S.cues.push(b);
+  S.cues.sort((a, c) => a - c);
+  drawTimeline();
+  document.getElementById("cueCount").textContent = S.cues.length + " 个卡点";
+};
+document.getElementById("btnTexEvent").onclick = () => {
+  const p = S.selected;
+  if (!p){ toast("先选中一个图层"); return; }
+  if (p.variants.length < 2){ toast("该图层只有一张贴图"); return; }
+  pushUndo();
+  const next = (p.texIndex + 1) % p.variants.length;
+  p.texIndex = next;
+  upsertKey(p, S.beat, { tex: next, ease: { p: null } });
+  renderAll();
+  toast("已在 " + S.beat.toFixed(2) + " 拍切换到贴图 " + (next + 1));
+};
+
+document.querySelectorAll(".tab").forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("on"));
+    t.classList.add("on");
+    S.tab = t.dataset.tab;
+    renderInspector();
+  };
+});
+
+document.getElementById("bpm").onchange = e => {
+  pushUndo();
+  S.bpm = clamp(+e.target.value || 120, 40, 240);
+  drawTimeline(); updateTime();
+};
+document.getElementById("sig").onchange = e => {
+  pushUndo();
+  S.sig = clamp(+e.target.value || 4, 2, 12);
+  drawTimeline();
+};
+
+/* ============================ MIDI / 钢琴窗 / 口型 ============================ */
+const pr = document.getElementById("pr");
+const pctx = pr.getContext("2d");
+let prDrag = false;
+
+const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const noteName = n => NOTE_NAMES[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+const isBlackKey = n => [1,3,6,8,10].indexOf(((n % 12) + 12) % 12) >= 0;
+const LIP_COLORS = ["#5DCAA5","#F0997B","#9EB8F0","#E0A0D8","#D8C87A","#8FD0E0"];
+
+/* ---------- SMF 解析（只用 ticks/PPQ → 拍，不重建 tempo map） ---------- */
+function parseMidi(buf){
+  const dv = new DataView(buf);
+  let p = 0;
+  const tag = n => { let s = ""; for (let i = 0; i < n; i++) s += String.fromCharCode(dv.getUint8(p + i)); p += n; return s; };
+  if (dv.byteLength < 14 || tag(4) !== "MThd") throw new Error("不是标准 MIDI 文件");
+  const hl = dv.getUint32(p); p += 4;
+  const ntr = dv.getUint16(p + 2);
+  const div = dv.getInt16(p + 4);
+  p += hl;                              // 跳过整个 header body，落到第一个 track 块
+  const ppq = div > 0 ? div : 96;
+
+  const vlq = () => {
+    let v = 0, c;
+    do { c = dv.getUint8(p++); v = (v << 7) | (c & 0x7f); } while (c & 0x80);
+    return v;
+  };
+
+  const notes = [];
+  let maxTick = 0, tempoBpm = 0;
+
+  for (let ti = 0; ti < ntr && p + 8 <= dv.byteLength; ti++){
+    const id = tag(4);
+    const len = dv.getUint32(p); p += 4;
+    const end = Math.min(dv.byteLength, p + len);
+    if (id !== "MTrk"){ p = end; continue; }
+
+    let tick = 0, run = 0;
+    const open = new Map();
+    while (p < end){
+      tick += vlq();
+      if (tick > maxTick) maxTick = tick;
+      let st = dv.getUint8(p);
+      if (st & 0x80){ p++; if (st < 0xF0) run = st; }
+      else { st = run; if (!st){ p++; continue; } }
+
+      if (st === 0xFF){
+        const type = dv.getUint8(p++);
+        const l = vlq();
+        if (type === 0x51 && l === 3 && !tempoBpm){
+          const us = (dv.getUint8(p) << 16) | (dv.getUint8(p + 1) << 8) | dv.getUint8(p + 2);
+          if (us > 0) tempoBpm = Math.round(60000000 / us);
+        }
+        p += l;
+        if (type === 0x2F) break;
+        continue;
+      }
+      if (st === 0xF0 || st === 0xF7){ const l = vlq(); p += l; continue; }
+
+      const hi = st & 0xF0, ch = st & 0x0F;
+      if (hi === 0x90){
+        const pitch = dv.getUint8(p), vel = dv.getUint8(p + 1); p += 2;
+        const key = ch * 128 + pitch;
+        if (vel > 0) open.set(key, { t: tick, vel });
+        else {
+          const o = open.get(key);
+          if (o){ open.delete(key); notes.push({ t:o.t, d:Math.max(1, tick-o.t), pitch, vel:o.vel, ch }); }
+        }
+      } else if (hi === 0x80){
+        const pitch = dv.getUint8(p); p += 2;
+        const key = ch * 128 + pitch;
+        const o = open.get(key);
+        if (o){ open.delete(key); notes.push({ t:o.t, d:Math.max(1, tick-o.t), pitch, vel:o.vel, ch }); }
+      } else if (hi === 0xC0 || hi === 0xD0){ p += 1; }
+      else { p += 2; }
+    }
+    for (const [key, o] of open){
+      notes.push({ t:o.t, d:Math.max(1, maxTick - o.t), pitch: key % 128, vel:o.vel, ch: Math.floor(key / 128) });
+    }
+    p = end;
+  }
+
+  if (!notes.length) throw new Error("文件里没有音符");
+  notes.sort((a, b) => a.t - b.t || a.pitch - b.pitch);
+  const durTick = notes.reduce((m, n) => Math.max(m, n.t + n.d), 0);
+  return {
+    ppq, tempoBpm,
+    notes: notes.map(n => ({ t: n.t / ppq, d: n.d / ppq, pitch: n.pitch, vel: n.vel, ch: n.ch })),
+    durBeat: durTick / ppq,
+    pitches: [...new Set(notes.map(n => n.pitch))].sort((a, b) => b - a),
+    chans: [...new Set(notes.map(n => n.ch))].sort((a, b) => a - b)
+  };
+}
+
+/* ---------- 口型映射 ---------- */
+function lipPart(){ return S.lip.partId ? (S.parts.find(p => p.id === S.lip.partId) || null) : null; }
+function midiNotes(){
+  if (!S.midi) return [];
+  return S.lip.ch < 0 ? S.midi.notes : S.midi.notes.filter(n => n.ch === S.lip.ch);
+}
+function lipVariantOf(pitch){
+  const p = lipPart();
+  if (!p) return 0;
+  const raw = S.lip.map[String(pitch)];
+  const v = raw === undefined ? (S.lip.def | 0) : raw;
+  return clamp(v | 0, 0, Math.max(0, p.variants.length - 1));
+}
+function variantLabel(p, i){
+  const v = p && p.variants[i];
+  return v ? (v.variant || "贴图 " + (i + 1)) : "—";
+}
+
+/* 改映射后：已经生成过口型就自动重烘，否则只刷新预览 */
+function afterLipChange(){
+  const p = lipPart();
+  if (p && S.midi && p.keys.some(k => k.lip)) bakeLip();
+  else { drawPianoRoll(); syncMidiUI(true); }
+}
+
+function lipAuto(){
+  const p = lipPart();
+  if (!p) return toast("先在「口型图层」里选一个图层");
+  if (!S.midi) return toast("先导入 MIDI");
+  if (p.variants.length < 2) return toast("该图层只有 1 张贴图，先加几张不同口型");
+  const pitches = [...new Set(midiNotes().map(n => n.pitch))].sort((a, b) => a - b);
+  if (!pitches.length) return toast("当前通道没有音符");
+  const V = p.variants.length;
+  S.lip.map = {};
+  pitches.forEach((pitch, i) => {
+    S.lip.map[String(pitch)] = Math.round(i / Math.max(1, pitches.length - 1) * (V - 1));
+  });
+  afterLipChange();
+  toast("已把 " + pitches.length + " 个音高分配到 " + V + " 张贴图（点左侧音高名可逐个改）");
+}
+
+function cycleLipPitch(pitch){
+  const p = lipPart();
+  if (!p) return toast("先在「口型图层」里选一个图层");
+  const cur = lipVariantOf(pitch);
+  const next = (cur + 1) % p.variants.length;
+  S.lip.map[String(pitch)] = next;
+  afterLipChange();
+  toast(noteName(pitch) + " → " + variantLabel(p, next));
+}
+
+function bakeLip(){
+  const p = lipPart();
+  if (!p) return toast("先在「口型图层」里选一个图层");
+  if (!S.midi) return toast("先导入 MIDI");
+  if (p.variants.length < 2) return toast("该图层至少需要 2 张贴图");
+  if (S.clips.some(c => c.partId === p.id)) return toast("该图层有动作片段，先「分解为关键帧」再生成口型");
+  const notes = midiNotes();
+  if (!notes.length) return toast("当前通道没有音符");
+  if (notes.length > 2000) return toast("音符太多（" + notes.length + "），先用通道筛选再生成");
+
+  pushUndo();
+  const V = p.variants.length;
+  const def = clamp(S.lip.def | 0, 0, V - 1);
+  p.keys = p.keys.filter(k => !k.lip);
+
+  const evs = [];
+  for (const n of notes){
+    evs.push({ t: n.t, tex: lipVariantOf(n.pitch), k: 1 });
+    evs.push({ t: n.t + n.d, tex: def, k: 0 });
+  }
+  evs.sort((a, b) => a.t - b.t || a.k - b.k);
+
+  const merged = [];
+  for (const e of evs){
+    const t = Math.round(e.t * 1000) / 1000;
+    const last = merged[merged.length - 1];
+    if (last && Math.abs(last.t - t) < 1e-3) last.tex = e.tex;
+    else merged.push({ t, tex: e.tex });
+  }
+
+  const snaps = [];
+  for (const e of merged){
+    applyAt(e.t);
+    const s = keySnapshot(p, e.t, { tex: e.tex, ease: { p: null } });
+    s.lip = true;
+    snaps.push(s);
+  }
+  for (const s of snaps){
+    const ex = p.keys.find(k => Math.abs(k.t - s.t) < 1e-3);
+    if (ex){ ex.tex = s.tex; ex.lip = true; }
+    else p.keys.push(s);
+  }
+  p.keys.sort((a, b) => a.t - b.t);
+  applyAt(S.beat);
+  renderAll();
+  toast("「" + p.slot + "」已生成 " + snaps.length + " 个口型关键帧");
+}
+
+function clearLipKeys(){
+  let n = 0;
+  for (const p of S.parts) n += p.keys.filter(k => k.lip).length;
+  if (!n) return toast("没有口型关键帧");
+  pushUndo();
+  for (const p of S.parts) p.keys = p.keys.filter(k => !k.lip);
+  applyAt(S.beat); renderAll();
+  toast("已删除 " + n + " 个口型关键帧");
+}
+
+/* ---------- 钢琴窗绘制 ---------- */
+function prLayout(){
+  const W = pr.clientWidth || 800, H = pr.clientHeight || 136;
+  const list = S.midi ? [...new Set(midiNotes().map(n => n.pitch))].sort((a, b) => b - a) : [];
+  const avail = Math.max(10, H - 1);
+  const rh = clamp(avail / Math.max(1, Math.min(list.length, 30)), 9, 16);
+  const contentH = list.length * rh;
+  const maxScroll = Math.max(0, contentH - avail);
+  S.prScroll = clamp(S.prScroll || 0, 0, maxScroll);
+  return { W, H, list, rh, avail, contentH, maxScroll };
+}
+
+function drawPianoRoll(){
+  const wrap = document.getElementById("prwrap");
+  if (!wrap) return;
+  const app = document.getElementById("app");
+  if (!S.prOpen){ wrap.classList.remove("open"); if (app) app.classList.remove("propen"); return; }
+  wrap.classList.add("open");
+  if (app) app.classList.add("propen");
+
+  const dpr = window.devicePixelRatio || 1;
+  const { W, H, list, rh } = prLayout();
+  if (pr.width !== Math.round(W*dpr) || pr.height !== Math.round(H*dpr)){
+    pr.width = Math.round(W*dpr); pr.height = Math.round(H*dpr);
+  }
+  pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  pctx.clearRect(0, 0, W, H);
+  pctx.fillStyle = "#141414"; pctx.fillRect(0, 0, W, H);
+  pctx.fillStyle = "#1c1c1c"; pctx.fillRect(0, 0, labelW, H);
+  pctx.textAlign = "left";
+
+  if (!S.midi){
+    pctx.fillStyle = "#4e4e48";
+    pctx.font = "11px -apple-system,sans-serif";
+    pctx.fillText("导入 MIDI 后在这里显示音符", labelW + 14, H/2 + 4);
+    return;
+  }
+  const lp = lipPart();
+  const dense = rh < 11;
+
+  for (let i = 0; i < list.length; i++){
+    const y = 1 + i*rh - S.prScroll;
+    if (y + rh < 0 || y > H) continue;
+    const pitch = list[i];
+    if (isBlackKey(pitch)){
+      pctx.fillStyle = "#181818"; pctx.fillRect(labelW, y, W - labelW, rh);
+    }
+    pctx.strokeStyle = "#1f1f1f";
+    pctx.beginPath(); pctx.moveTo(0, y + rh); pctx.lineTo(W, y + rh); pctx.stroke();
+    if (rh >= 8){
+      const ty = y + rh - (dense ? 1.5 : 2.5);
+      pctx.font = (dense ? "8px" : "9px") + " -apple-system,sans-serif";
+      const isC = ((pitch % 12) + 12) % 12 === 0;
+      if (!dense || isC || i % 4 === 0){
+        pctx.fillStyle = isC ? "#a5a59d" : "#7c7c75";
+        pctx.fillText(noteName(pitch), 5, ty);
+      }
+      if (lp && !dense){
+        let vn = variantLabel(lp, lipVariantOf(pitch));
+        if (vn.length > 7) vn = vn.slice(0, 7);
+        pctx.fillStyle = LIP_COLORS[lipVariantOf(pitch) % LIP_COLORS.length];
+        pctx.textAlign = "right";
+        pctx.fillText(vn, labelW - 6, ty);
+        pctx.textAlign = "left";
+      }
+    }
+  }
+
+  pctx.save();
+  pctx.beginPath(); pctx.rect(labelW, 0, W - labelW, H); pctx.clip();
+
+  const b0 = Math.max(0, Math.floor(S.scrollBeat * 4) / 4 - 0.25);
+  const b1 = S.scrollBeat + S.visibleBeats + 1;
+  for (let b = b0; b <= b1; b += 0.25){
+    const isBar = Math.abs(b % S.sig) < 1e-6;
+    const isBeat = Math.abs(b % 1) < 1e-6;
+    if (!isBeat && pxPerBeat < 26) continue;
+    pctx.strokeStyle = isBar ? "#333" : (isBeat ? "#262626" : "#1e1e1e");
+    pctx.beginPath(); pctx.moveTo(xOf(b), 0); pctx.lineTo(xOf(b), H); pctx.stroke();
+  }
+
+  const idxOf = new Map();
+  list.forEach((pitch, i) => idxOf.set(pitch, i));
+  for (const n of midiNotes()){
+    const i = idxOf.get(n.pitch);
+    if (i === undefined) continue;
+    const y = 1 + i*rh - S.prScroll;
+    if (y + rh < 0 || y > H) continue;
+    const x1 = xOf(n.t), x2 = xOf(n.t + n.d);
+    if (x2 < labelW || x1 > W) continue;
+    const bx = Math.max(labelW, x1);
+    const bw = Math.min(Math.max(2.5, x2 - x1), W - bx);
+    if (bw <= 0) continue;
+    const bh = Math.max(3, rh - 2);
+    const v = lp ? lipVariantOf(n.pitch) : -1;
+    pctx.fillStyle = v >= 0 ? LIP_COLORS[v % LIP_COLORS.length] : "#3f6f8f";
+    roundRect(pctx, bx, y + (rh - bh)/2, bw, bh, 1.5);
+    pctx.fill();
+  }
+
+  const px = xOf(S.beat);
+  if (px >= labelW && px <= W){
+    pctx.strokeStyle = "rgba(240,240,234,.85)";
+    pctx.lineWidth = 1;
+    pctx.beginPath(); pctx.moveTo(px, 0); pctx.lineTo(px, H); pctx.stroke();
+  }
+  pctx.restore();
+
+  pctx.strokeStyle = "#2c2c2c";
+  pctx.beginPath(); pctx.moveTo(labelW - .5, 0); pctx.lineTo(labelW - .5, H); pctx.stroke();
+}
+
+/* ---------- 钢琴窗交互 ---------- */
+pr.addEventListener("pointerdown", e => {
+  if (!S.midi) return;
+  const r = pr.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  if (x < labelW){
+    const { list, rh } = prLayout();
+    const i = Math.floor((y + S.prScroll - 1) / rh);
+    const pitch = list[i];
+    if (pitch !== undefined) cycleLipPitch(pitch);
+    return;
+  }
+  if (e.button !== 0) return;
+  prDrag = true;
+  try { pr.setPointerCapture(e.pointerId); } catch(err){}
+  scrubTo(x);
+});
+pr.addEventListener("pointermove", e => {
+  if (!prDrag) return;
+  const r = pr.getBoundingClientRect();
+  scrubTo(e.clientX - r.left);
+});
+window.addEventListener("pointerup", () => { prDrag = false; });
+pr.addEventListener("wheel", e => {
+  if (!S.midi) return;
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey){
+    const r = pr.getBoundingClientRect();
+    zoomAt(S.zoom * (e.deltaY < 0 ? 1.15 : 1/1.15), e.clientX - r.left);
+    return;
+  }
+  const { maxScroll } = prLayout();
+  S.prScroll = clamp(S.prScroll + e.deltaY, 0, maxScroll);
+  drawPianoRoll();
+}, { passive: false });
+
+/* ---------- MIDI 工具栏 ---------- */
+let midiSig = "";
+function syncMidiUI(force){
+  const sig = [
+    S.midi ? S.midi.name + ":" + S.midi.notes.length + ":" + S.midi.chans.join(",") : "-",
+    S.parts.map(p => p.id + ":" + p.slot + ":" + p.variants.length).join("|"),
+    S.lip.partId, S.lip.ch, S.lip.def, S.prOpen
+  ].join("~");
+  if (!force && sig === midiSig) return;
+  midiSig = sig;
+
+  document.getElementById("midiName").textContent = S.midi
+    ? (S.midi.name || "MIDI") + " · " + S.midi.notes.length + " 音符" + (S.midi.tempoBpm ? " · " + S.midi.tempoBpm + " BPM" : "")
+    : "无 MIDI";
+
+  const lpSel = document.getElementById("lipPart");
+  lpSel.innerHTML = '<option value="">（不设）</option>' + S.parts.map(p =>
+    '<option value="' + p.id + '"' + (p.id === S.lip.partId ? " selected" : "") + '>' +
+    esc(p.slot) + " (" + p.variants.length + ")</option>").join("");
+
+  const chSel = document.getElementById("lipCh");
+  chSel.innerHTML = '<option value="-1">全部</option>' + (S.midi ? S.midi.chans.map(c =>
+    '<option value="' + c + '"' + (c === S.lip.ch ? " selected" : "") + '>Ch ' + (c + 1) +
+    " · " + S.midi.notes.filter(n => n.ch === c).length + "</option>").join("") : "");
+
+  const defSel = document.getElementById("lipDef");
+  const lp = lipPart();
+  defSel.innerHTML = lp
+    ? lp.variants.map((v, i) => '<option value="' + i + '"' + (i === (S.lip.def | 0) ? " selected" : "") + '>' +
+        esc(v.variant || "贴图 " + (i + 1)) + "</option>").join("")
+    : '<option value="0">—</option>';
+  defSel.disabled = !lp;
+
+  document.getElementById("btnPrToggle").textContent = S.prOpen ? "钢琴窗 ▼" : "钢琴窗 ▲";
+}
+
+function setPrOpen(v){
+  S.prOpen = !!v;
+  const app = document.getElementById("app");
+  const wrap = document.getElementById("prwrap");
+  if (app) app.classList.toggle("propen", S.prOpen);
+  if (wrap) wrap.classList.toggle("open", S.prOpen);   // 先定高度再量，否则时间轴会按旧高度排版
+  drawTimeline(); syncMidiUI(true);
+}
+
+async function loadMidiFile(f){
+  try {
+    const m = parseMidi(await f.arrayBuffer());
+    m.name = f.name.replace(/\.[^.]+$/, "");
+    pushUndo();
+    S.midi = m;
+    S.lip.ch = m.chans.length === 1 ? m.chans[0] : -1;
+    S.prScroll = 0;
+    S.prOpen = true;
+    document.getElementById("app").classList.add("propen");
+    if (!S.lip.partId){
+      const guess = S.parts.find(p => p.variants.length > 1 && /mouth|嘴|口|lip/i.test(p.slot)) ||
+                    S.parts.find(p => p.variants.length > 1);
+      if (guess) S.lip.partId = guess.id;
+    }
+    renderAll(); syncMidiUI(true);
+    toast("MIDI：" + m.notes.length + " 个音符 / " + m.chans.length + " 通道" +
+          (m.tempoBpm ? " · 原速 " + m.tempoBpm + " BPM" : "") + "，选中口型图层后点「生成口型」");
+  } catch(err){
+    console.error(err);
+    toast("MIDI 读取失败：" + (err && err.message ? err.message : err));
+  }
+}
+
+document.getElementById("btnMidi").onclick = () => document.getElementById("midiPick").click();
+document.getElementById("midiPick").onchange = e => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (f) loadMidiFile(f);
+};
+document.getElementById("btnPrToggle").onclick = () => setPrOpen(!S.prOpen);
+document.getElementById("lipPart").onchange = e => {
+  S.lip.partId = e.target.value || null;
+  S.lip.def = 0;
+  drawPianoRoll(); syncMidiUI(true);
+};
+document.getElementById("lipCh").onchange = e => {
+  S.lip.ch = +e.target.value;
+  S.prScroll = 0;
+  afterLipChange();
+};
+document.getElementById("lipDef").onchange = e => {
+  S.lip.def = +e.target.value || 0;
+  afterLipChange();
+};
+document.getElementById("btnLipAuto").onclick = lipAuto;
+document.getElementById("btnLipBake").onclick = bakeLip;
+document.getElementById("btnLipClear").onclick = clearLipKeys;
+
+/* ============================ 快捷键 ============================ */
+document.addEventListener("keydown", e => {
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key.toLowerCase() === "z"){ e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && e.key.toLowerCase() === "y"){ e.preventDefault(); redo(); return; }
+  if (mod && e.key.toLowerCase() === "c"){ e.preventDefault(); copySelection(); return; }
+  if (mod && e.key.toLowerCase() === "x"){ e.preventDefault(); cutSelection(); return; }
+  if (mod && e.key.toLowerCase() === "v"){ e.preventDefault(); pasteClipboard(); return; }
+  if (mod && e.key.toLowerCase() === "d"){ e.preventDefault(); duplicateSelection(); return; }
+
+  if (e.code === "Space"){ e.preventDefault(); togglePlay(); }
+  else if (e.key === "t" || e.key === "T"){ document.getElementById("btnCue").click(); }
+  else if (e.key === "h" || e.key === "H"){ e.shiftKey ? mirrorSelection("x") : (S.selected && flipPart(S.selected, "x")); }
+  else if (e.key === "v" || e.key === "V"){ e.shiftKey ? mirrorSelection("y") : (S.selected && flipPart(S.selected, "y")); }
+  else if (e.key === "Delete" || e.key === "Backspace"){
+    if (hasSel()){
+      e.preventDefault();
+      deleteSelection();
+    }
+  }
+  else if (e.key === "ArrowLeft"){ e.preventDefault(); setBeat(S.beat - (e.shiftKey ? 1 : 0.25)); }
+  else if (e.key === "ArrowRight"){ e.preventDefault(); setBeat(S.beat + (e.shiftKey ? 1 : 0.25)); }
+});
+
+/* ============================ 拖放导入 ============================ */
+const dropZone = document.getElementById("dropZone");
+let dragDepth = 0;
+
+function hasFiles(e){
+  const dt = e.dataTransfer;
+  if (!dt || !dt.types) return false;
+  return Array.prototype.indexOf.call(dt.types, "Files") >= 0;
+}
+
+window.addEventListener("dragenter", e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth++;
+  dropZone.classList.add("on");
+});
+window.addEventListener("dragover", e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+});
+window.addEventListener("dragleave", e => {
+  if (!hasFiles(e)) return;
+  dragDepth--;
+  if (dragDepth <= 0){ dragDepth = 0; dropZone.classList.remove("on"); }
+});
+const AUDIO_EXT = /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|weba|aiff?|wma)$/i;
+const IMAGE_EXT = /\.(png|jpe?g|webp|gif|bmp|svg|avif|tiff?)$/i;
+const MIDI_EXT = /\.(mid|midi)$/i;
+function isAudioFile(f){ return !!((f.type && f.type.startsWith("audio/")) || AUDIO_EXT.test(f.name || "")); }
+function isImageFile(f){ return !!((f.type && f.type.startsWith("image/")) || IMAGE_EXT.test(f.name || "")); }
+function isMidiFile(f){ return !!((f.type && /midi/i.test(f.type)) || MIDI_EXT.test(f.name || "")); }
+
+window.addEventListener("drop", e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  dropZone.classList.remove("on");
+  const files = Array.from(e.dataTransfer.files || []);
+  const audios = files.filter(isAudioFile);
+  const images = files.filter(isImageFile);
+  const midis = files.filter(isMidiFile);
+
+  if (midis.length) loadMidiFile(midis[0]);
+  if (audios.length) loadAudioFile(audios[0]);
+  if (images.length) addFiles(images);
+  if (!audios.length && !images.length && !midis.length) toast("不支持的文件类型");
+});
+
+function loadAudioFile(f){
+  try {
+    S.audio = new Audio(URL.createObjectURL(f));
+    S.audio.onloadedmetadata = () => {
+      S.audioDur = S.audio.duration || 0;
+      drawTimeline(); updateTime(); renderInspector();
+    };
+    S.audio.onerror = () => toast("这个音频格式浏览器无法解码");
+    S.audioName = f.name || "音频";
+    toast("已导入音乐：" + (f.name || "").slice(0, 24));
+  } catch(err){
+    toast("音频导入失败");
+  }
+}
+
+window.addEventListener("resize", () => { draw(); drawTimeline(); });
+
+/* ============================ 示例 ============================ */
+function svgURI(inner){
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000">' + inner + '</svg>');
+}
+const DEMO = [
+  { slot:"body", variant:"", src: svgURI('<ellipse cx="500" cy="540" rx="96" ry="166" fill="#5B8DB8"/>') },
+  { slot:"arm_l", variant:"", src: svgURI('<ellipse cx="394" cy="446" rx="35" ry="96" fill="#4F7FA8"/>') },
+  { slot:"arm_r", variant:"", src: svgURI('<ellipse cx="606" cy="446" rx="35" ry="96" fill="#4F7FA8"/>') },
+  { slot:"head", variant:"normal", src: svgURI('<circle cx="500" cy="252" r="112" fill="#F3C9A2"/><circle cx="466" cy="240" r="9" fill="#2A2A2A"/><circle cx="534" cy="240" r="9" fill="#2A2A2A"/><path d="M478 290 Q500 304 522 290" stroke="#2A2A2A" stroke-width="5" fill="none" stroke-linecap="round"/>') },
+  { slot:"head", variant:"happy", src: svgURI('<circle cx="500" cy="252" r="112" fill="#F3C9A2"/><path d="M456 242 q10 -15 20 0" stroke="#2A2A2A" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M524 242 q10 -15 20 0" stroke="#2A2A2A" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M470 284 Q500 314 530 284 Z" fill="#2A2A2A"/>') }
+];
+document.getElementById("btnDemo").onclick = () => addItems(DEMO);
+
+/* ============================ 视频导出 ============================ */
+function tick(){ return new Promise(r => setTimeout(r, 0)); }
+
+function projectEndBeat(){
+  const lastKey = S.parts.reduce((m, p) => p.keys.reduce((mm, k) => Math.max(mm, k.t), m), 0);
+  const lastCue = S.cues.reduce((m, c) => Math.max(m, c), 0);
+  const clipEnd = S.clips.reduce((m, c) => Math.max(m, c.start + c.dur), 0);
+  const midiEnd = S.midi ? (S.midi.durBeat || 0) : 0;
+  return Math.max(lastKey, lastCue, clipEnd, midiEnd, S.sig);
+}
+function projectDuration(){
+  return S.audio && S.audioDur > 0 ? S.audioDur : projectEndBeat() * 60 / S.bpm;
+}
+
+function renderExportFrame(g, W, H, scale){
+  const old = S.view;
+  S.view = { scale, ox: 0, oy: 0 };
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, W, H);
+  drawBackground(g, true);
+  for (const p of S.parts){
+    if (!p.visible) continue;
+    const it = p.variants[p.texIndex] || p.variants[0];
+    if (!it) continue;
+    paintPart(g, p, it, worldOf(p));
+  }
+  S.view = old;
+}
+
+/* ---- EBML / WebM ---- */
+function ebCat(list){
+  let len = 0;
+  for (const b of list) len += b.length;
+  const out = new Uint8Array(len);
+  let o = 0;
+  for (const b of list){ out.set(b, o); o += b.length; }
+  return out;
+}
+function ebSize(n){
+  let len = 1;
+  while (len < 8 && n >= Math.pow(2, 7 * len) - 1) len++;
+  const b = new Uint8Array(len);
+  let v = n;
+  for (let i = len - 1; i >= 0; i--){ b[i] = v & 0xff; v = Math.floor(v / 256); }
+  b[0] |= 0x80 >> (len - 1);
+  return b;
+}
+function ebEl(id, payload){
+  return ebCat([new Uint8Array(id), ebSize(payload.length), payload]);
+}
+function ebUint(id, val){
+  const bytes = [];
+  let v = Math.max(0, Math.floor(val));
+  do { bytes.unshift(v & 0xff); v = Math.floor(v / 256); } while (v > 0);
+  return ebEl(id, new Uint8Array(bytes));
+}
+function ebFloat(id, val){
+  const b = new Uint8Array(8);
+  new DataView(b.buffer).setFloat64(0, val);
+  return ebEl(id, b);
+}
+function ebStr(id, s){
+  return ebEl(id, new TextEncoder().encode(s));
+}
+function opusHead(ch, sr, preSkip){
+  const b = new Uint8Array(19);
+  b.set([0x4F, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64], 0);
+  b[8] = 1; b[9] = ch;
+  b[10] = preSkip & 0xff; b[11] = (preSkip >> 8) & 0xff;
+  b[12] = sr & 0xff; b[13] = (sr >> 8) & 0xff; b[14] = (sr >> 16) & 0xff; b[15] = (sr >> 24) & 0xff;
+  b[16] = 0; b[17] = 0; b[18] = 0;
+  return b;
+}
+
+function buildWebM(o){
+  const ebml = ebEl([0x1A,0x45,0xDF,0xA3], ebCat([
+    ebUint([0x42,0x86], 1),
+    ebUint([0x42,0xF7], 1),
+    ebUint([0x42,0xF2], 4),
+    ebUint([0x42,0xF3], 8),
+    ebStr([0x42,0x82], "webm"),
+    ebUint([0x42,0x87], 4),
+    ebUint([0x42,0x85], 2)
+  ]));
+
+  const info = ebEl([0x15,0x49,0xA9,0x66], ebCat([
+    ebUint([0x2A,0xD7,0xB1], 1000000),
+    ebStr([0x4D,0x80], "rigframe"),
+    ebStr([0x57,0x41], "rigframe"),
+    ebFloat([0x44,0x89], o.durationMs)
+  ]));
+
+  const vTrack = ebEl([0xAE], ebCat([
+    ebUint([0xD7], 1),
+    ebUint([0x73,0xC5], 1),
+    ebUint([0x83], 1),
+    ebUint([0x23,0xE3,0x83], Math.round(1e9 / o.fps)),
+    ebStr([0x86], o.vCodecId),
+    ebEl([0xE0], ebCat([ebUint([0xB0], o.width), ebUint([0xBA], o.height)]))
+  ]));
+
+  const trackEntries = [vTrack];
+  if (o.hasAudio){
+    trackEntries.push(ebEl([0xAE], ebCat([
+      ebUint([0xD7], 2),
+      ebUint([0x73,0xC5], 2),
+      ebUint([0x83], 2),
+      ebStr([0x86], "A_OPUS"),
+      ebEl([0x63,0xA2], opusHead(2, 48000, 312)),
+      ebEl([0xE1], ebCat([ebFloat([0xB5], 48000), ebUint([0x9F], 2)]))
+    ])));
+  }
+  const tracks = ebEl([0x16,0x54,0xAE,0x6B], ebCat(trackEntries));
+
+  const blocks = [];
+  o.video.forEach(c => blocks.push({ ts: Math.round(c.ts / 1000), track: 1, data: c.data, key: !!c.key }));
+  if (o.hasAudio) o.audio.forEach(c => blocks.push({ ts: Math.round(c.ts / 1000), track: 2, data: c.data, key: true }));
+  blocks.sort((a, b) => a.ts - b.ts || a.track - b.track);
+
+  const clusters = [];
+  let cur = null;
+  for (const b of blocks){
+    const needNew = !cur || (b.ts - cur.ts) > 1000 || (b.track === 1 && b.key && b.ts > cur.ts && cur.blocks.length);
+    if (needNew){
+      if (cur) clusters.push(cur);
+      cur = { ts: b.ts, blocks: [] };
+    }
+    cur.blocks.push(b);
+  }
+  if (cur) clusters.push(cur);
+
+  const clusterEls = clusters.map(c => {
+    const parts = [ebUint([0xE7], c.ts)];
+    for (const b of c.blocks){
+      const rel = b.ts - c.ts;
+      const hdr = new Uint8Array(4);
+      hdr[0] = 0x80 | b.track;
+      hdr[1] = (rel >> 8) & 0xff;
+      hdr[2] = rel & 0xff;
+      hdr[3] = b.key ? 0x80 : 0x00;
+      parts.push(ebEl([0xA3], ebCat([hdr, b.data])));
+    }
+    return ebEl([0x1F,0x43,0xB6,0x75], ebCat(parts));
+  });
+
+  const segment = ebEl([0x18,0x53,0x80,0x67], ebCat([info, tracks].concat(clusterEls)));
+  return ebCat([ebml, segment]);
+}
+
+async function encodeAudioOpus(onProgress, start, dur){
+  if (!S.audio || !S.audioDur) return null;
+  const res = await fetch(S.audio.src);
+  const raw = await res.arrayBuffer();
+  const ac = new AudioContext();
+  const buf = await ac.decodeAudioData(raw);
+  await ac.close();
+
+  const SR = 48000;
+  const ch = Math.min(2, buf.numberOfChannels);
+  const off = new OfflineAudioContext(2, Math.ceil(buf.duration * SR), SR);
+  const src = off.createBufferSource();
+  src.buffer = buf;
+  src.connect(off.destination);
+  src.start();
+  const rendered = await off.startRendering();
+  const L = rendered.getChannelData(0);
+  const R = rendered.numberOfChannels > 1 ? rendered.getChannelData(1) : L;
+  const from = Math.max(0, Math.floor((start || 0) * SR));
+  const want = Math.max(0, Math.floor((dur || rendered.duration) * SR));
+
+  const chunks = [];
+  const enc = new AudioEncoder({
+    output: (chunk) => {
+      const d = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(d);
+      chunks.push({ ts: chunk.timestamp, data: d });
+    },
+    error: (e) => { console.warn("audio encode", e); }
+  });
+  await enc.configure({ codec: "opus", sampleRate: SR, numberOfChannels: 2, bitrate: 128000 });
+
+  const N = 960;
+  const total = Math.max(0, Math.min(rendered.length - from, want));
+  for (let i = 0; i < total; i += N){
+    const n = Math.min(N, total - i);
+    const src = from + i;
+    const data = new Float32Array(n * 2);
+    data.set(L.subarray(src, src + n), 0);
+    data.set(R.subarray(src, src + n), n);
+    const ad = new AudioData({
+      format: "f32-planar", sampleRate: SR, numberOfFrames: n, numberOfChannels: 2,
+      timestamp: Math.round(i / SR * 1e6), data
+    });
+    enc.encode(ad);
+    ad.close();
+    if (i % (N * 40) === 0){ if (onProgress) onProgress(i / total * 0.25); await tick(); }
+  }
+  await enc.flush();
+  enc.close();
+  let out = chunks;
+  if (out.length){
+    const t0 = out[0].ts;
+    if (t0 > 0) out.forEach(c => { c.ts -= t0; });
+  }
+  const offUs = Math.round((S.audioOffset || 0) * 1e6);
+  if (offUs !== 0){
+    out.forEach(c => { c.ts += offUs; });
+    out = out.filter(c => c.ts >= 0);
+  }
+  return out;
+}
+
+async function exportVideo(opts, onProgress, onStatus){
+  const W = Math.round(S.doc.w * opts.scale);
+  const H = Math.round(S.doc.h * opts.scale);
+  if (W < 16 || H < 16) throw new Error("画布尺寸太小");
+  const w = W - (W % 2), h = H - (H % 2);
+  const scale = opts.scale;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const g = canvas.getContext("2d");
+
+  let vCodec = "vp09.00.10.08", vCodecId = "V_VP9";
+  let supported = false;
+  try {
+    const s = await VideoEncoder.isConfigSupported({ codec: vCodec, width: w, height: h, bitrate: opts.bitrate, framerate: opts.fps });
+    supported = !!(s && s.supported);
+  } catch(e){ supported = false; }
+  if (!supported){
+    vCodec = "vp8"; vCodecId = "V_VP8";
+    const s2 = await VideoEncoder.isConfigSupported({ codec: vCodec, width: w, height: h, bitrate: opts.bitrate, framerate: opts.fps });
+    if (!s2 || !s2.supported) throw new Error("浏览器不支持 WebCodecs 视频编码");
+  }
+
+  onStatus && onStatus("编码音频…");
+  let audioChunks = null;
+  try { audioChunks = await encodeAudioOpus(onProgress, opts.start || 0, opts.duration); } catch(e){ console.warn(e); }
+
+  onStatus && onStatus("编码画面…");
+  const videoChunks = [];
+  const venc = new VideoEncoder({
+    output: (chunk) => {
+      const d = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(d);
+      videoChunks.push({ ts: chunk.timestamp, data: d, key: chunk.type === "key" });
+    },
+    error: (e) => { console.warn("video encode", e); }
+  });
+  await venc.configure({ codec: vCodec, width: w, height: h, bitrate: opts.bitrate, framerate: opts.fps, latencyMode: "quality" });
+
+  const dur = opts.duration;
+  const frames = Math.max(1, Math.round(dur * opts.fps));
+  const gop = Math.max(1, Math.round(opts.fps * 2));
+  const savedBeat = S.beat;
+
+  for (let i = 0; i < frames; i++){
+    const t = i / opts.fps;
+    applyAt(((opts.start || 0) + t) * S.bpm / 60);
+    renderExportFrame(g, w, h, scale);
+    const vf = new VideoFrame(canvas, {
+      timestamp: Math.round(t * 1e6),
+      duration: Math.round(1e6 / opts.fps)
+    });
+    venc.encode(vf, { keyFrame: i % gop === 0 });
+    vf.close();
+    if (i % 4 === 0){
+      onProgress && onProgress(0.25 + (i / frames) * 0.65);
+      await tick();
+    }
+  }
+  await venc.flush();
+  venc.close();
+
+  applyAt(savedBeat);
+  onStatus && onStatus("封装文件…");
+  const bytes = buildWebM({
+    width: w, height: h, fps: opts.fps,
+    vCodecId, durationMs: Math.round(dur * 1000),
+    video: videoChunks,
+    audio: audioChunks || [],
+    hasAudio: !!(audioChunks && audioChunks.length)
+  });
+  onProgress && onProgress(1);
+  return new Blob([bytes], { type: "video/webm" });
+}
+
+/* ---- 导出界面 ---- */
+function openExport(){
+  if (!S.parts.length){ toast("还没有图层可以导出"); return; }
+  const m = document.getElementById("expModal");
+  const total = projectDuration();
+  document.getElementById("expStart").value = "0";
+  document.getElementById("expEnd").value = total.toFixed(2);
+  document.getElementById("expDur").textContent = total.toFixed(2) + " 秒";
+  document.getElementById("expAud").textContent = S.audio ? "包含音乐" : "无音频";
+  document.getElementById("expBar").style.width = "0%";
+  document.getElementById("expStatus").textContent = "准备就绪";
+  document.getElementById("expOk").disabled = false;
+  syncExpPx();
+  m.classList.add("show");
+}
+
+function syncExpPx(){
+  const scale = +document.getElementById("expScale").value;
+  const w = Math.round(S.doc.w * scale), h = Math.round(S.doc.h * scale);
+  document.getElementById("expPx").textContent = (w - w % 2) + " × " + (h - h % 2);
+}
+document.getElementById("expScale").onchange = syncExpPx;
+
+async function doExport(){
+  const fps = +document.getElementById("expFps").value;
+  const scale = +document.getElementById("expScale").value;
+  const okBtn = document.getElementById("expOk");
+  const bar = document.getElementById("expBar");
+  const st = document.getElementById("expStatus");
+  const total = projectDuration();
+  let start = Math.max(0, +document.getElementById("expStart").value || 0);
+  let end = Math.min(total, +document.getElementById("expEnd").value || total);
+  if (end <= start + 0.05){ end = total; start = 0; }
+  okBtn.disabled = true;
+
+  try {
+    const blob = await exportVideo(
+      { fps, scale, duration: end - start, start, end,
+        bitrate: Math.round(S.doc.w * S.doc.h * scale * scale * 0.12) },
+      p => { bar.style.width = Math.round(p * 100) + "%"; },
+      s => { st.textContent = s; }
+    );
+    const name = "rigframe-" + Date.now().toString(36) + ".webm";
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    st.textContent = "完成：" + (blob.size / 1048576).toFixed(2) + " MB";
+    bar.style.width = "100%";
+    okBtn.disabled = false;
+    setTimeout(() => document.getElementById("expModal").classList.remove("show"), 900);
+    toast("已导出 " + name);
+  } catch(e){
+    console.error(e);
+    st.textContent = "导出失败：" + (e && e.message ? e.message : e);
+    okBtn.disabled = false;
+  }
+}
+
+document.getElementById("expOk").onclick = doExport;
+document.getElementById("expCancel").onclick = () => document.getElementById("expModal").classList.remove("show");
+
+/* ============================ 启动 ============================ */
+const qa = document.getElementById("quickAction");
+qa.innerHTML = '<option value="">＋ 插入动作</option>' +
+  ["基础", "情绪", "卡点"].map(c =>
+    '<optgroup label="' + c + '">' +
+      ACTION_LIB.filter(a => a.cat === c).map(a => '<option value="' + a.id + '">' + a.name + '</option>').join("") +
+    '</optgroup>').join("");
+qa.onchange = e => {
+  const v = e.target.value;
+  e.target.value = "";
+  if (v) applyAction(v);
+};
+
+loadCustomActions();
+syncUndoBtns();
+renderAll();
+syncMidiUI(true);
+loop();
+requestAnimationFrame(() => { fitView(); draw(); });
+
+if (location.search.indexOf("demo") >= 0){
+  setTimeout(async () => {
+    await addItems(DEMO);
+    applyAction("nod");
+    applyAction("wave");
+    setBeat(0);
+    undoStack.length = 0; redoStack.length = 0; syncUndoBtns();
+  }, 60);
+}
+</script>
+</body>
+</html>

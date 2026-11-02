@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rigframe · 使用说明</title>
+<style>
+  :root{--bg:#151515;--panel:#1e1e1e;--line:#333;--text:#e4e4e0;--muted:#8d8d88;--accent:#5DCAA5;--warn:#F0997B}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.85 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+  main{max-width:840px;margin:0 auto;padding:56px 28px 120px}
+  h1{font-size:30px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+  h1+h2{margin-top:44px}
+  h2{font-size:20px;font-weight:600;margin:52px 0 16px;padding-top:22px;border-top:1px solid var(--line)}
+  h3{font-size:16px;font-weight:600;margin:32px 0 10px;color:#f0f0ea}
+  p{margin:12px 0;color:#d2d2cd}
+  strong{color:#fff;font-weight:600}
+  code{background:#242424;border:1px solid #333;border-radius:4px;padding:1px 5px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:var(--accent)}
+  pre{background:#1b1b1b;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow:auto}
+  pre code{background:none;border:0;padding:0;color:#cfcfca;font-size:12.5px;line-height:1.6}
+  hr{border:0;border-top:1px solid var(--line);margin:40px 0}
+  blockquote{margin:16px 0;padding:10px 16px;border-left:3px solid var(--warn);background:#231d18;border-radius:0 6px 6px 0;color:#e8d5c6;font-size:14px}
+  blockquote p{margin:0}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:#242424;font-weight:600;color:#eaeae5;white-space:nowrap}
+  tr:nth-child(even) td{background:#1a1a1a}
+  ul,ol{margin:12px 0;padding-left:22px}
+  li{margin:5px 0;color:#d2d2cd}
+  a{color:var(--accent)}
+  main>p:first-of-type{color:var(--muted)}
+  hr+h2{border-top:none;margin-top:34px;padding-top:0}
+</style></head>
+<body><main>
+<h1>Rigframe · 使用说明</h1>
+<p>一个跑在浏览器里的手书 / 对口型动画工具。你负责画，它负责让画动起来、卡上点、导出成视频。</p>
+<p><strong>它不是</strong>：不是绘图软件（画还是在你自己的软件里画），不是专业动画软件（没有骨骼蒙皮、没有曲线编辑器级别的深度）。</p>
+<p><strong>它是</strong>：把「分层 PNG + 一首 BGM」变成「一条卡点手书视频」的最短路径。</p>
+<hr>
+<h2>一、三分钟跑通第一条片子</h2>
+<h3>第 1 步：打开</h3>
+<p>双击 <code>prototype/index.html</code>，用 <strong>Chrome 或 Edge</strong> 打开（原因见文末「浏览器要求」）。</p>
+<p>第一次打开会看到中间有一个「载入示例角色」按钮。<strong>先点它</strong>，用自带的示例角色熟悉操作，比直接导入自己的图快得多。</p>
+<h3>第 2 步：准备并导入分层图</h3>
+<p>在自己的绘图软件里把角色拆成部件，每个部件导出成一张 PNG，<strong>所有图层用同一个画布尺寸导出</strong>（不要各自裁剪），这样导进来能自动对齐。</p>
+<p>文件名按这个格式：</p>
+<pre><code>部位__变体.png</code></pre>
+<p>例如：</p>
+<pre><code>head__normal.png
+head__happy.png
+arm_l.png
+arm_r.png
+body.png</code></pre>
+<p>把这几张图一起拖进窗口任意位置即可。</p>
+<h3>第 3 步：摆位置</h3>
+<p>在画布上拖拽部件调整位置；选中后会出现一个白色<strong>变换框</strong>，拖四个角的圆点缩放，拖右下角的圆钮旋转。滚轮是缩放<strong>视图</strong>（推拉镜头），中键拖拽平移画布。</p>
+<blockquote><p>⚠️ 这一步会产生关键帧（见「自动记录」）。如果你只是想摆初始姿态，先点底部工具栏的「● 自动记录」把它关掉，摆完再打开。</p></blockquote>
+<h3>第 4 步：卡点</h3>
+<p>导入音乐（顶栏「导入音乐」，或直接把音频文件拖进窗口）。</p>
+<p>播放，跟着节奏按 <code>T</code>，或者点底部「＋ 卡点」，卡点标记会落在时间轴标尺上。</p>
+<h3>第 5 步：放动作</h3>
+<p>右侧「动作」标签里有一堆现成动作（点头、挥手、跳一下、震惊……）。把播放头放到想开始的位置，点一下卡片，时间轴上就出现一个动作片段。</p>
+<p>片段可以<strong>拖动位置</strong>、<strong>拖右边缘拉伸时长</strong>。</p>
+<h3>第 6 步：导出</h3>
+<p>顶栏「导出视频」→ 选帧率 → 开始导出。得到一个 <code>.webm</code> 文件。</p>
+<hr>
+<h2>二、准备素材的规范</h2>
+<h3>图层要求</h3>
+<table><thead><tr><th>项目</th><th>要求</th></tr></thead><tbody><tr><td>格式</td><td>PNG（带透明通道）</td></tr><tr><td>画布尺寸</td><td><strong>所有图层必须一致</strong>，且部件在画布上的相对位置保持原样</td></tr><tr><td>拆分粒度</td><td>至少要分开：身体、头、左右手臂</td></tr><tr><td>分辨率</td><td>建议 1000×1000 以上</td></tr></tbody></table>
+<p><strong>为什么必须同尺寸导出</strong>：软件靠透明像素的包围盒自动算轴心和对齐，如果每个图层各自裁剪，导进来会散架（可以手动拖回去，但很麻烦）。</p>
+<h3>命名与自动识别</h3>
+<p>软件按文件名里的关键词判断这是哪个部位：</p>
+<table><thead><tr><th>文件名包含</th><th>识别为</th><th>挂到谁下面</th></tr></thead><tbody><tr><td><code>head</code> <code>头</code> <code>face</code> <code>脸</code> <code>面</code> <code>hair</code> <code>发</code> <code>eye</code> <code>眼</code> <code>mouth</code> <code>嘴</code> <code>brow</code> <code>眉</code></td><td>头部</td><td>身体</td></tr><tr><td><code>arm</code> <code>手</code> <code>臂</code> + <code>_l</code> <code>left</code> <code>左</code></td><td>左臂</td><td>身体</td></tr><tr><td><code>arm</code> <code>手</code> <code>臂</code>（不含左）</td><td>右臂</td><td>身体</td></tr><tr><td><code>leg</code> <code>腿</code> <code>脚</code> <code>foot</code></td><td>腿</td><td>身体</td></tr><tr><td>其他</td><td>身体</td><td>无（根节点）</td></tr></tbody></table>
+<p><strong>变体</strong>用双下划线分隔：<code>head__normal.png</code> 和 <code>head__happy.png</code> 会被认成同一个部位的两张贴图，在属性面板里一键切换。</p>
+<hr>
+<h2>三、界面导览</h2>
+<pre><code>┌──────────────────────────────────────────────────────────────┐
+│ 顶栏   撤销 重做        导入分层图 导入音乐 导出视频 导出工程  │
+├────────┬──────────────────────────────────┬──────────────────┤
+│图层|父子│                                  │  属性 曲线 动作 场景│
+│        │            画布                  │                  │
+│ 面板   │                                  │    右侧检查器     │
+│        │                                  │                  │
+├────────┴──────────────────────────────────┴──────────────────┤
+│ 工具栏  ▶ 时间 BPM 拍号 吸附 ＋卡点 ＋贴图事件 ＋存为组件 ...  │
+│ MIDI 栏 导入 MIDI 口型图层 通道 静音 自动映射 生成口型 钢琴窗  │
+│ 钢琴窗  音符（可折叠），与时间轴共用同一套时间刻度            │
+│ 时间轴  每个图层一条轨道，片段是方块，关键帧是菱形            │
+└──────────────────────────────────────────────────────────────┘</code></pre>
+<h3>左侧：图层面板</h3>
+<p>面板顶部有两个分页，<strong>同一份数据，两种看法</strong>：</p>
+<table><thead><tr><th>分页</th><th>用途</th></tr></thead><tbody><tr><td><strong>图层</strong></td><td>平铺列表，按遮挡顺序从上到下排。只管「谁在前面、谁在后面」，不显示缩进</td></tr><tr><td><strong>父子级</strong></td><td>树状列表，父级显示为<strong>文件夹</strong>（带折叠箭头），子图层缩进显示。只管「谁跟着谁动」</td></tr></tbody></table>
+<p>两个分页都能拖动行改顺序；<strong>按住 Alt 拖到某一行上 = 把图层放进它下面</strong>（成为子图层），在「父子级」里看最直观。</p>
+<ul><li>每层有缩略图、名称、显示/隐藏、锁定</li><li>平铺列表里，子图层名字前面有个小 <code>⤷</code>，鼠标悬停能看到父级是谁</li><li>双击名称可改名</li></ul>
+<p><strong>点透明处会自动选到下面那层</strong>：画布上的命中判定是<strong>逐像素</strong>的（读贴图的 alpha），点在某个图层的透明区域时，会往下找第一个真正不透明的地方。所以头发中间的空隙、手臂之间的缝，点下去选中的是身体，不是头发。如果整片区域都是透明的，仍然保留最上面那一层的选中，不会突然什么都没有。</p>
+<p>底部两个按钮：<code>＋ 贴图</code>（给当前图层追加贴图变体）、<code>删除</code>。</p>
+<p>每张贴图缩略图右上角有个小 <code>×</code>，可以删掉这一张。删到只剩一张时不能再删（图层至少要有一张贴图）。删除后关键帧里记录的贴图序号会自动夹到有效范围，不会出现空图。</p>
+<h3>中间：画布</h3>
+<ul><li><strong>拖拽</strong>：移动部件</li><li><strong>拖四角白点</strong>：缩放（缩放是围绕轴心进行的）</li><li><strong>拖右下角圆钮</strong>：旋转，靠近 15° 的整数倍会自动吸附</li><li><strong>左上 ×</strong>：删除这个图层（可撤销）</li><li><strong>左下 +1</strong>：复制一份图层</li><li><strong>滚轮</strong>：缩放视图（推拉镜头，像 Blender 那样）</li><li><strong>中键拖拽</strong>：平移画布</li><li><strong>右键</strong>：视图菜单（适应窗口 / 实际大小 / 放大缩小）</li><li>点空白处取消选中</li><li>白框是当前选中的部件，框中间的绿点是它的轴心，旋转和缩放都绕这个点</li></ul>
+<h3>右侧：四个标签页</h3>
+<table><thead><tr><th>标签</th><th>作用</th></tr></thead><tbody><tr><td><strong>属性</strong></td><td>当前图层的名称、父级、贴图、变换、轴心、关键帧</td></tr><tr><td><strong>曲线</strong></td><td>选中关键帧后调缓动曲线</td></tr><tr><td><strong>动作</strong></td><td>动作库 + 我的组件</td></tr><tr><td><strong>场景</strong></td><td>画布尺寸、背景、音频</td></tr></tbody></table>
+<p>改画布尺寸时，<strong>内容会按比例跟着缩放</strong>，规则是：</p>
+<ul><li><strong>只改了一边</strong>（比如只把宽从 1000 改成 2000）→ 按改的那一边缩放，内容跟着变大/变小</li><li><strong>两边都改了</strong>（比如切到 1080×1920 预设）→ 取较小的比例，保证内容<strong>装得下、不被裁切</strong>，多余空间居中留白</li></ul>
+<p>不需要这个行为时，把「改尺寸时按比例缩放内容」关掉即可。</p>
+<h3>底部：时间轴</h3>
+<ul><li>左侧是图层名，右侧是内容</li><li><strong>方块 = 动作片段</strong>，<strong>菱形 = 关键帧</strong></li><li>橙色小三角 = 卡点标记</li><li>白线 = 播放头</li></ul>
+<p>工具栏从左到右：播放、时间码、BPM、拍号、吸附、<strong>自动记录开关</strong>、<strong>手动加关键帧</strong>、加卡点、加贴图事件、存为组件、插入动作、缩放。</p>
+<p>工具栏下面还有一条 <strong>MIDI 栏</strong>和一块可折叠的<strong>钢琴窗</strong>（见「MIDI 口型」一章）。钢琴窗收起时只占一行按钮；展开后时间轴会自动让出高度，两者<strong>共用同一套时间刻度</strong>，播放头对齐。</p>
+<hr>
+<h2>四、几个必须理解的概念</h2>
+<h3>1. 图层树：父级动，子级跟着动</h3>
+<p>每个部件都有「父级」。默认身体是根节点，头、手臂挂在身体下面。</p>
+<p><strong>这意味着</strong>：身体播放「跳一下」时，头也会跟着跳（因为它挂在身体下面）。这是正确的、符合直觉的行为。</p>
+<p>如果不想让某个部件跟着父级动，在属性面板把它的「父级」设为「（无父级）」。</p>
+<h3>2. 轴心：旋转和缩放的中心</h3>
+<p>每个部件都有一个轴心（画布上的绿点）。旋转、缩放都围绕它进行。</p>
+<p><strong>默认位置</strong>：图形自身包围盒的中心。</p>
+<p><strong>为什么重要</strong>：手臂的轴心应该在肩膀，不是在手臂中间。轴心不对，转起来就像风车。</p>
+<p><strong>怎么改</strong>：</p>
+<ul><li>属性面板「轴心」区，直接填 X / Y 数值</li><li>或者点「画布上点选」，然后在画布上<strong>拖动</strong>橙色十字准星</li><li>改错了点「回到中心」</li></ul>
+<p><strong>关键特性</strong>：轴心是<strong>按比例</strong>存在所有贴图上的。同一部位换成不同尺寸的贴图，轴心会等比跟随，不会错位。</p>
+<p><strong>改轴心不会带动子级。</strong> 子级的坐标是相对父级轴心的，按原理改轴心会让整条子级链漂移。这里做了补偿：改完之后子级在画面上<strong>原地不动</strong>，只是父级的旋转中心变了。</p>
+<h3>3. 关键帧 vs 动作片段（最容易混淆的地方）</h3>
+<p>这个工具有<strong>两套并行的动画方式</strong>：</p>
+<table><thead><tr><th></th><th>关键帧</th><th>动作片段</th></tr></thead><tbody><tr><td>长什么样</td><td>时间轴上的小菱形</td><td>时间轴上的彩色方块</td></tr><tr><td>怎么产生</td><td>改属性时自动记录</td><td>从动作库拖/点出来</td></tr><tr><td>怎么编辑</td><td>逐个调属性、调曲线</td><td>拖动位置、拉伸时长</td></tr><tr><td>适合</td><td>精细的手工动画</td><td>快速套用常见动作</td></tr></tbody></table>
+<p><strong>重要规则：动作片段会覆盖同一时间段内的关键帧。</strong></p>
+<p>当播放头落在某个片段范围内时，属性面板会出现橙色提示：</p>
+<blockquote><p>当前时间在动作片段「点头」内，属性修改会被片段覆盖。</p></blockquote>
+<p>这时候你改属性、调曲线都不会生效——因为片段说了算。</p>
+<p><strong>选中关键帧后改属性，改的就是这一帧。</strong> 点时间轴上的菱形，播放头会跳到这一帧，之后你在属性面板里改旋转、位置、缩放，都是<strong>直接改这个关键帧</strong>，不会在旁边多插一帧。拖动菱形时播放头也会跟着走，所见即所改。</p>
+<p>（拖播放头、按方向键会把关键帧选中状态清掉，避免「改了 A 帧却以为在改当前时刻」。）</p>
+<p><strong>播放时属性面板是实时刷新的。</strong> 播放头走到哪，面板里的 X / Y / 旋转 / 缩放 / 透明就显示那一刻的数值，方便你观察动作曲线是否正常。</p>
+<p><strong>想混用怎么办</strong>：先把片段「分解为关键帧」（右键片段 → 分解为关键帧），它就变成普通关键帧，之后所有编辑都生效。</p>
+<h3>4. 组件：把一段关键帧存成可复用的动作</h3>
+<p>自己调了一段满意的动画？可以存成组件，以后反复用。</p>
+<p><strong>打包</strong>：选中关键帧（或直接选中图层用它的全部关键帧）→ 底部「＋ 存为组件」→ 命名。</p>
+<p><strong>打包后会发生什么</strong>：原来的关键帧会被<strong>替换成一个片段</strong>，画面完全不变。这样你可以把它当成一个整体来拖动、拉伸。</p>
+<p><strong>拆开</strong>：右键这个片段 → 分解为关键帧。</p>
+<p><strong>跨图层复用</strong>：组件存的是相对量（相对于起始姿态的偏移），所以头部的动作可以套到身体上，不会飞出去。</p>
+<p><strong>保存位置</strong>：浏览器的 localStorage。刷新不丢，但换电脑/换浏览器就没了。</p>
+<h3>5. 镜像</h3>
+<p>属性面板「变换」里有 <strong>⇋ 水平镜像</strong> 和 <strong>⇅ 垂直镜像</strong> 两个按钮（桌面快捷键 <code>H</code> / <code>V</code>）。</p>
+<p>镜像围绕<strong>轴心</strong>进行，图形原地翻转，位置不动。</p>
+<p><strong>父子关系是继承的，不是传播的：</strong></p>
+<ul><li>镜像父级（比如 body）→ 所有子级（head / arm）跟着翻转</li><li>子级自己的 <code>flipX</code> 仍是关闭状态，只是被父级矩阵带着翻</li><li>所以子级再点一次「水平镜像」，会<strong>抵消</strong>父级的翻转，让这一层单独恢复正常朝向</li></ul>
+<p>这就是「单独镜像」的用法：父级整体镜像后，某个部件想保持原样，选中它再镜像一次即可。</p>
+<p><strong>镜像可以打进关键帧。</strong> 点镜像按钮时，如果这个图层已经有动画（有关键帧），会<strong>强制在播放头落一帧</strong>——否则下一次求值就会把镜像回滚掉。翻转状态保持到下一个关键帧，然后瞬间切换（离散属性，不做渐变）。所以「人物转身」「左右张望」这类动作用两个关键帧就能完成。</p>
+<p><strong>镜像选中的关键帧和片段（把整段动画翻过来）：</strong></p>
+<ul><li>在时间轴上选中关键帧（<code>Shift</code> 点选或框选）和/或动作片段</li><li>右键 → 「镜像选中（水平 / 垂直）」，或按 <code>Shift + H</code> / <code>Shift + V</code></li><li>关键帧和片段会被一起翻转，<strong>不影响图层当前姿态</strong></li></ul>
+<p>这适合「一段挥手动画，想直接改成反方向」：框选整段 → <code>Shift + H</code>，不用逐个调。</p>
+<p><strong>片段有自己的镜像状态。</strong> 动作片段是独立的一段动画，所以它记着自己的翻转：</p>
+<ul><li>选中片段按 <code>Shift + H</code> → 这段动画整体翻转</li><li>播放头落在片段里时点「水平镜像」→ 改的是<strong>这个片段</strong>，不是整个图层</li><li>播放头在片段外时点「水平镜像」→ 改的是图层关键帧</li></ul>
+<blockquote><p>镜像和缩放是分开的属性。把 <code>缩放X</code> 拉到负数不会触发镜像（会被限制在 10% 以上），要翻转请用镜像按钮。</p></blockquote>
+<h3>6. 发丝摆动 / 形变</h3>
+<p>给挂在父级下的图层（头发、呆毛、裙摆、尾巴）加<strong>滞后摆动</strong>：父级一动，它就慢半拍跟上来，停住后再慢慢回位。</p>
+<p>属性面板「发丝摆动」区：</p>
+<table><thead><tr><th>参数</th><th>作用</th></tr></thead><tbody><tr><td><strong>阻尼</strong></td><td>越大回位越快、越"硬"；越小越软、晃得久</td></tr><tr><td><strong>跟随</strong></td><td>对父级运动的敏感度，越大甩得越开</td></tr><tr><td><strong>最大角</strong></td><td>摆动幅度上限，防止穿模</td></tr><tr><td><strong>随风</strong></td><td>开关。关掉时<strong>只跟随父级运动</strong>，不做自发的风摆；打开后按下面的角度和频率额外摆动</td></tr><tr><td><strong>网格变形</strong></td><td>开关。关 = 整层绕轴心摆动；开 = 沿发丝方向弯曲（见下）</td></tr></tbody></table>
+<p>两种模式：</p>
+<ul><li><strong>整体摆动</strong>（网格变形关）：整个图层绕自己的轴心转一个角度。适合呆毛、尾巴、小挂件。</li><li><strong>网格形变</strong>（网格变形开）：把图层沿纵向切成 N 段，每段单独旋转，形成<strong>连续的弯曲</strong>。适合长发、飘带。段数 3~500，默认 32。</li></ul>
+<p><strong>「最大角」是整条发丝的总弯曲角</strong>，不是每段的角度。段数只决定平滑度：8 段能看到折线台阶，40 段基本看不出来，200 段完全平滑。实测 120 段单帧绘制 0.63ms，200 段约 1ms，性能不是瓶颈；但段数越高，关键帧里存的角度数组越长，工程文件会变大。</p>
+<p>点「生成摆动关键帧」/「生成形变关键帧」→ 从 0 帧烘焙到片子结束，每 1/24 秒一帧，写进这个图层的关键帧。</p>
+<p><strong>网格形变的原理</strong>：图层的包围盒纵向切成 N 段，每段绕<strong>上一段的末端</strong>旋转，角度存在关键帧的 <code>bend</code> 数组里（每帧 N 个数）。</p>
+<p>三个让它看起来顺的细节：</p>
+<ol><li><strong>总角按权重分配</strong>：<code>bend[k] = 总角 × 权重 / 权重和</code>，所以改段数不会改变弯曲程度，只改变平滑度。</li><li><strong>每段用「上一段 + 本段」的平均角绘制，并居中在段中点</strong>：接缝两侧各差一半，台阶减半。</li><li><strong>相邻段多画 60%（最多 3px）</strong>：盖住弯折内侧的楔形缝。</li></ol>
+<p><strong>跟随的驱动信号有两个</strong>：父级的<strong>旋转</strong>（发丝落后）和父级的<strong>水平位移</strong>（发丝甩向反侧，位移除以发丝长度换算成角度）。所以就算父级只是平移、完全不转，发丝也会甩起来。</p>
+<p><strong>波是沿着发丝往下传的</strong>：第 k 段取的是「根部响应」延迟一点点的值（根到梢共延迟 0.28 秒），所以是梢部最后停下，不是整根一起僵直地动。</p>
+<p><strong>实测效果</strong>（父级 1 拍内转头 0°→40°）：</p>
+<pre><code>0.00 拍  父=0.0°    发丝局部=0.0°
+0.50 拍  父=20.0°   发丝局部=-13.7°   ← 落后于父级
+1.00 拍  父=40.0°   发丝局部=-15.9°   ← 甩到最大
+1.50 拍  父=40.0°   发丝局部=-6.4°    ← 回弹
+2.00 拍  父=40.0°   发丝局部=-2.6°    ← 归位</code></pre>
+<p><strong>多段链条</strong>：把头发拆成「发根 → 发中 → 发梢」三层父子关系，选中发根点一次生成，整条链会依次滞后（子级的父级已经带了摆动，所以是级联的）。</p>
+<blockquote><p>它是<strong>烘焙成关键帧</strong>，不是实时物理。好处是能预览、能手动改、导出和预览完全一致；代价是改参数后要重新点一次生成。已经有关键帧动画的图层会在原动画基础上叠加摆动。</p></blockquote>
+<h3>7. 自动记录（全局开关）</h3>
+<p>底部工具栏的「● 自动记录」，<strong>对所有图层生效</strong>，不是单个图层的设置。</p>
+<ul><li><strong>开</strong>（默认，橙色高亮）：改任何属性都会在播放头位置落一个关键帧</li><li><strong>关</strong>（灰色）：改属性只改当前姿态，不落关键帧</li></ul>
+<p>旁边的「＋ 关键帧」是<strong>手动打帧</strong>：给当前选中的图层在播放头位置插一个关键帧，<strong>不受自动记录开关影响</strong>。适合「我想精确控制在哪一拍落帧」的场景。</p>
+<p><strong>什么时候该关自动记录</strong>：第一次摆位置、对齐部件的时候。否则你会在一堆位置上留下关键帧。</p>
+<h3>8. MIDI 口型（钢琴窗）</h3>
+<p>这是给「对口型」准备的一整套东西：<strong>把 MIDI 音符变成贴图切换</strong>。</p>
+<p><strong>为什么用 MIDI 而不是直接听音频</strong>：音频里没有「哪个音、什么时候开始、什么时候结束」这种结构化信息，MIDI 有。很多虚拟歌手、编曲软件都能导出 MIDI。</p>
+<h4>三步走</h4>
+<ol><li><strong>导入 MIDI</strong>：点 MIDI 栏的「导入 MIDI」，或者把 <code>.mid</code> 文件拖进窗口。钢琴窗会自动展开。</li><li><strong>选口型图层 + 自动映射</strong>：在「口型图层」里选你的嘴（这个图层要先有几张不同口型的贴图，用 <code>＋ 贴图</code> 加）。点「自动映射」，它会把当前通道里的音高<strong>从低到高</strong>依次分配给你的贴图。</li><li><strong>生成口型</strong>：点「生成口型」，音符就变成这个图层的贴图关键帧，播放时嘴会跟着音高开合。</li></ol>
+<blockquote><p>生成的是<strong>普通关键帧</strong>（带一个「口型」标记），可以照常拖动、删除、调曲线，也可以被撤销。想重来点「清除」即可。</p></blockquote>
+<h4>钢琴窗怎么看</h4>
+<ul><li>左边是<strong>音高行</strong>，从上到下由高到低，行名就是音名（C4、D4…）</li><li>右边是音符方块，横轴和时间轴<strong>完全对齐</strong></li><li>有口型图层时，音高行右侧会显示这个音高映射到哪张<strong>贴图</strong>，颜色和音符一致</li><li>点音高行左侧的名字 = <strong>换一张贴图</strong>（循环切换）。改完如果已经生成过口型，会<strong>自动重新生成</strong></li><li>在音符区点击/拖拽 = 定位播放头（和时间轴标尺一样）</li><li>滚轮 = 上下滚动音高；<code>Ctrl + 滚轮</code> = 缩放时间刻度</li></ul>
+<h4>通道很重要</h4>
+<p>一个 MIDI 文件里往往同时有旋律、和声、鼓。<strong>鼓轨也会被当成音符</strong>，直接生成会让嘴乱动。所以 MIDI 栏有一个「通道」筛选：选成旋律/人声那个通道，钢琴窗和口型生成都只认这个通道的音符。</p>
+<p>默认行为：文件只有一个通道时自动选中它；有多个通道时默认「全部」，这时需要你自己挑一下。</p>
+<h4>「静音贴图」是什么</h4>
+<p>音符和音符之间的空隙（换气、休止）用哪张贴图——一般就是<strong>闭嘴</strong>那张。默认是第 1 张。</p>
+<h4>速度对不上怎么办</h4>
+<p>工具是<strong>按拍</strong>工作的：MIDI 的 ticks 直接除以 PPQ 当作拍，<strong>不重建速度曲线</strong>。</p>
+<ul><li>工程 BPM 和 MIDI 原速一致时，音符落在完全正确的小节位置上</li><li>不一致时，音符仍然落在正确的<strong>音乐网格</strong>上（小节、拍子对得上），但和音频的绝对时间会偏</li><li>MIDI 栏会显示文件里的原速（比如 <code>120 BPM</code>），照着它把工程的 BPM 调成一样即可</li></ul>
+<hr>
+<h2>五、操作速查</h2>
+<h3>画布</h3>
+<table><thead><tr><th>操作</th><th>效果</th></tr></thead><tbody><tr><td>拖拽</td><td>移动部件</td></tr><tr><td><strong>拖四角圆点</strong></td><td><strong>缩放</strong>（默认等比；按住 Shift 强制等比；属性面板切「独立」后可单独拉宽压扁）</td></tr><tr><td><strong>拖右下角圆钮</strong></td><td><strong>旋转</strong>（每 15° 吸附，按住 Alt 关闭吸附）</td></tr><tr><td><strong>左上角 ×</strong></td><td>删除图层</td></tr><tr><td><strong>左下角 +1</strong></td><td>复制图层</td></tr><tr><td><code>H</code> / <code>V</code></td><td>选中图层水平 / 垂直镜像</td></tr><tr><td><code>Shift + H</code> / <code>V</code></td><td>镜像时间轴上选中的关键帧 / 片段</td></tr><tr><td>Shift + 拖拽</td><td>旋转部件（老操作，仍可用）</td></tr><tr><td><strong>滚轮</strong></td><td><strong>缩放视图</strong>（推拉镜头，不影响部件大小）</td></tr><tr><td><strong>中键拖拽</strong></td><td><strong>平移画布</strong></td></tr><tr><td><strong>右键</strong></td><td>视图菜单：适应窗口 / 实际大小 100% / 放大 / 缩小</td></tr><tr><td>Alt + 滚轮</td><td>缩放选中的部件</td></tr><tr><td>点空白</td><td>取消选中</td></tr></tbody></table>
+<blockquote><p>滚轮改的是「镜头」，不是部件。要改部件大小，拖四角圆点最快。</p></blockquote>
+<h3>时间轴</h3>
+<table><thead><tr><th>操作</th><th>效果</th></tr></thead><tbody><tr><td>拖标尺</td><td>拖动播放头</td></tr><tr><td>点轨道空白处</td><td>定位播放头</td></tr><tr><td><strong>在轨道空白处拖拽</strong></td><td><strong>框选</strong>关键帧和片段</td></tr><tr><td><strong>Shift + 点</strong></td><td>加选 / 减选</td></tr><tr><td>拖关键帧</td><td>改变时间位置</td></tr><tr><td>拖片段主体</td><td>移动片段</td></tr><tr><td>拖片段右边缘</td><td>拉伸时长</td></tr><tr><td>Ctrl + 滚轮</td><td>以鼠标位置为中心缩放</td></tr><tr><td>滚轮</td><td>横向滚动</td></tr><tr><td>Shift + 滚轮</td><td>纵向滚动（图层多时）</td></tr><tr><td>右键</td><td>复制 / 剪切 / 创建副本 / 分解 / 粘贴 / 删除</td></tr></tbody></table>
+<h3>钢琴窗（MIDI）</h3>
+<table><thead><tr><th>操作</th><th>效果</th></tr></thead><tbody><tr><td>点音高行左侧的名字</td><td>该音高换下一张贴图（已生成过口型会自动重烘）</td></tr><tr><td>点 / 拖音符区</td><td>定位播放头</td></tr><tr><td>滚轮</td><td>上下滚动音高</td></tr><tr><td>Ctrl + 滚轮</td><td>以鼠标位置为中心缩放时间刻度</td></tr><tr><td>「自动映射」</td><td>按音高从低到高依次分配贴图</td></tr><tr><td>「生成口型」</td><td>把音符烘焙成贴图关键帧</td></tr><tr><td>「清除」</td><td>删掉所有口型关键帧</td></tr><tr><td>「钢琴窗 ▲/▼」</td><td>展开 / 收起</td></tr></tbody></table>
+<blockquote><p>钢琴窗和时间轴共用时间刻度，滚轮横向滚动跟时间轴是同一个（在钢琴窗上滚轮是滚音高，横向仍用时间轴下方滚动条或 Ctrl+滚轮）。</p></blockquote>
+<h3>快捷键</h3>
+<table><thead><tr><th>按键</th><th>作用</th></tr></thead><tbody><tr><td><code>空格</code></td><td>播放 / 暂停</td></tr><tr><td><code>T</code></td><td>在播放头处打一个卡点</td></tr><tr><td><code>←</code> <code>→</code></td><td>播放头前后移 1/4 拍</td></tr><tr><td><code>Shift + ←/→</code></td><td>前后移 1 拍</td></tr><tr><td><code>Ctrl + Z</code></td><td>撤销</td></tr><tr><td><code>Ctrl + Shift + Z</code> / <code>Ctrl + Y</code></td><td>重做</td></tr><tr><td><code>Ctrl + C</code> / <code>X</code> / <code>V</code></td><td>复制 / 剪切 / 粘贴</td></tr><tr><td><code>Ctrl + D</code></td><td>原地创建副本</td></tr><tr><td><code>H</code></td><td>选中图层水平镜像</td></tr><tr><td><code>V</code></td><td>选中图层垂直镜像</td></tr><tr><td><code>Shift + H</code> / <code>Shift + V</code></td><td>镜像选中的关键帧 / 片段</td></tr><tr><td><code>Delete</code></td><td>删除选中的片段或关键帧</td></tr></tbody></table>
+<blockquote><p>快捷键在输入框获得焦点时不生效。</p></blockquote>
+<hr>
+<h2>六、导出</h2>
+<p>顶栏「导出视频」打开导出对话框。</p>
+<table><thead><tr><th>参数</th><th>说明</th></tr></thead><tbody><tr><td><strong>帧率</strong></td><td>24 / 30 / 60 fps。手书一般 30 够用，卡点很密的可以上 60</td></tr><tr><td><strong>尺寸</strong></td><td>100% / 75% / 50%，右侧会显示实际输出像素</td></tr><tr><td><strong>范围</strong></td><td>起止秒数。默认从 0 到内容结束</td></tr><tr><td><strong>时长</strong></td><td>只读，显示范围长度</td></tr></tbody></table>
+<p><strong>输出格式</strong>：<code>.webm</code>（VP9 视频 + Opus 音频）</p>
+<p><strong>导出是离线逐帧渲染的</strong>，比实时快。30 秒的片子通常几秒到几十秒，取决于分辨率和帧率。</p>
+<p><strong>透明背景会变成黑色</strong>——WebM 这个格式在当前封装下不带透明通道。</p>
+<h3>保存 / 打开工程</h3>
+<table><thead><tr><th>按钮</th><th>作用</th></tr></thead><tbody><tr><td><strong>导出工程</strong></td><td>把整个工程存成 <code>.json</code>，<strong>贴图以 base64 内嵌</strong>，文件是自包含的</td></tr><tr><td><strong>导入工程</strong></td><td>选一个之前导出的 <code>.json</code>，整份工程原样恢复</td></tr></tbody></table>
+<p>工程文件里包含：画布尺寸、背景、BPM / 拍号、卡点、所有图层的贴图与层级、变换、关键帧、动作片段（含镜像状态）。</p>
+<p>因为贴图内嵌，文件会比较大（几张 1000×1000 的 PNG 大约几 MB），但好处是可以直接发给别人，不用附带图片文件夹。</p>
+<blockquote><p>导入会<strong>替换</strong>当前工程，并且清空撤销历史。导入前记得先导出存一份。</p></blockquote>
+<h3>音频偏移</h3>
+<p>场景标签 → 音频区有「偏移」滑块（±3 秒）。</p>
+<ul><li><strong>正数</strong>：音乐延后</li><li><strong>负数</strong>：音乐提前</li></ul>
+<p><strong>实用技巧</strong>：把播放头放在画面开始动的那一拍，点「对齐到播放头」，音乐就会从那里起。比手动拖滑块试快得多。</p>
+<hr>
+<h2>七、常见问题</h2>
+<p><strong>Q：导入后部件全叠在一起 / 位置乱了</strong></p>
+<p>导出图层时没有用同一个画布尺寸。回去重新按统一尺寸导出。临时救急：手动拖到正确位置，或者用「自动记录：关」状态下摆好。</p>
+<p><strong>Q：旋转的时候部件飞出去了</strong></p>
+<p>轴心位置不对。点属性面板「画布上点选」，把十字准星拖到该转的地方（手臂拖到肩膀，头拖到脖子）。</p>
+<p><strong>Q：改了属性画面没反应</strong></p>
+<p>大概率是播放头落在某个动作片段范围内，片段覆盖了你的修改。看属性面板有没有橙色提示。要么把播放头移出去，要么把片段分解为关键帧。</p>
+<p><strong>Q：导出的视频没声音</strong></p>
+<p>检查场景标签的音频区是否显示「已加载」。如果是「未加载」，说明音频没有真正导入（可能格式浏览器不支持，换 mp3 试试）。</p>
+<p><strong>Q：导出很慢 / 卡住</strong></p>
+<p>降低分辨率（选 50%）或帧率（24fps）再试。4K 分辨率下 VP9 软编码会很慢。</p>
+<p><strong>Q：刷新页面后我的组件没了</strong></p>
+<p>组件存在 localStorage 里，正常情况下刷新会保留。如果清理过浏览器数据或用无痕模式，会丢失。</p>
+<p><strong>Q：能导入 mp4 音乐吗</strong></p>
+<p>不能直接导入视频文件。用其他工具把音轨提取成 mp3/wav 再导入。</p>
+<p><strong>Q：时间轴上的数字是什么</strong></p>
+<p>大数字是<strong>小节号</strong>，小数字是<strong>拍号</strong>。4/4 拍时，一个小节 = 4 拍。放大时间轴（Ctrl+滚轮）才能看到拍号。</p>
+<p><strong>Q：导入 MIDI 后嘴不动 / 乱动</strong></p>
+<p>三件事按顺序查：①「口型图层」选的是不是嘴那个图层；②「通道」选的是不是旋律/人声那个通道（选「全部」会把鼓也当音符，嘴就会抽）；③点了「生成口型」没有——只导入 MIDI 是不会自动生成关键帧的。</p>
+<p><strong>Q：点了「生成口型」提示有动作片段</strong></p>
+<p>那个图层上有动作片段，片段会覆盖关键帧。先在时间轴上把片段「分解为关键帧」，再生成口型。</p>
+<p><strong>Q：MIDI 音高太多，一个音高一个贴图不够分</strong></p>
+<p>正常。「自动映射」是按音高从低到高<strong>均分</strong>到现有贴图的，音高多于贴图时会合并。想改某个音高：在钢琴窗左侧点它的音高名，循环切换贴图。</p>
+<hr>
+<h2>八、浏览器要求</h2>
+<table><thead><tr><th>浏览器</th><th>支持情况</th></tr></thead><tbody><tr><td><strong>Chrome / Edge 94+</strong></td><td>✅ 完整支持（推荐）</td></tr><tr><td>Safari 16.4+</td><td>⚠️ 大部分功能可用，导出可能受限</td></tr><tr><td>Firefox</td><td>❌ 导出不可用（缺少 WebCodecs 视频编码器）</td></tr></tbody></table>
+<p>导出功能依赖 <strong>WebCodecs</strong>，这是较新的浏览器 API。如果打开后导出报错「浏览器不支持 WebCodecs 视频编码」，换 Chrome 或 Edge。</p>
+<hr>
+<h2>九、已知限制</h2>
+<p>诚实地列一下现在还做不到的事：</p>
+<ol><li><strong>只能导出 WebM，没有 MP4</strong>。B站、YouTube 直接支持，但微信、部分手机相册不认。</li><li><strong>没有参考视频叠底</strong>。想对着原片画符对位，现在做不到。</li><li><strong>组件不能跨设备/跨项目分享</strong>。只存在本机浏览器里。</li><li><strong>MIDI 不重建速度曲线</strong>：只按拍对齐（见「速度对不上怎么办」）。</li><li><strong>一次只能给一个图层做口型</strong>。多人对话要先分别生成。</li><li><strong>口型是按音高查表</strong>，不是按音量/音素。想要更细的嘴型得自己改关键帧。</li><li><strong>时间轴没有吸附到其他关键帧</strong>，只有吸附到拍线。</li><li><strong>没有多轨音频</strong>，只能有一条背景音乐。</li></ol>
+<hr>
+<h2>十、一条建议的工作流</h2>
+<p>给第一次做手书的人：</p>
+<ol><li><strong>先画完整张图</strong>，再拆分。拆的时候想象每个部件要怎么动。</li><li><strong>拆得比你以为的细一点</strong>。头发、眼睛、嘴巴单独拆出来，能做的表情变化多很多。</li><li><strong>先卡点，再画</strong>。把 BGM 导进来，跟着节奏打满卡点，再决定每个卡点画什么。</li><li><strong>先用动作库搭骨架</strong>，不满意的地方再分解成关键帧手调。</li><li><strong>中途多导出几次</strong>看看效果，别等做完才发现节奏不对。</li></ol>
+<hr>
+<p><em>文档版本对应工具 v0.2 · 最后更新 2026-11</em></p>
+</main></body></html>
